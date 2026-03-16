@@ -3,8 +3,10 @@ from typing import Optional
 
 
 class Settings(BaseSettings):
-    # Database
-    DATABASE_URL: str = "postgresql://user:password@localhost/ikigai_db"
+    # Database (Supabase PostgreSQL)
+    # Get the connection string from: https://supabase.com -> Project Settings -> Database
+    # Use Connection Pooling with Session mode for FastAPI
+    DATABASE_URL: str = "postgresql://postgres:[password]@[project-id].pooler.supabase.com:6543/postgres"
     
     # JWT
     SECRET_KEY: str = "your-secret-key-here-change-in-production"
