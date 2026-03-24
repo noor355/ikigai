@@ -7,8 +7,8 @@ import routes_profile
 import routes_daily
 import routes_recommendations
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Create database tables (commented out for testing without database)
+# Base.metadata.create_all(bind=engine)
 
 # Initialize FastAPI app
 app = FastAPI(
