@@ -9,6 +9,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
 import json
 from datetime import datetime, timedelta
+from typing import Dict, List, Any
+from .nlp_processor import get_nlp_processor
 
 
 class IkigaiRecommendationEngine:
@@ -20,6 +22,15 @@ class IkigaiRecommendationEngine:
         self.skill_weight = 0.25
         self.market_weight = 0.25
         self.growth_weight = 0.25
+        
+        # Initialize NLP processor
+        try:
+            self.nlp_processor = get_nlp_processor()
+            self.nlp_enabled = True
+        except Exception as e:
+            print(f"Warning: NLP processor initialization failed: {e}")
+            self.nlp_enabled = False
+            self.nlp_processor = None
     
     def calculate_user_profile_vector(self, user_profile, daily_entries):
         """
@@ -41,13 +52,26 @@ class IkigaiRecommendationEngine:
         passion_score = 0
         
         # Base score from profile
-        if user_profile['passions']:
+        if user_profile.get('passions'):
             passion_score += 50
         
-        # Boost from daily entries
-        if daily_entries:
+        # NLP-enhanced sentiment analysis on daily entries
+        if daily_entries and self.nlp_enabled:
             recent_entries = daily_entries[:30]  # Last 30 days
-            happy_count = sum(1 for e in recent_entries if e.get('mood') in ['happy', 'very_happy'])
+            
+            sentiment_boost = 0
+            for entry in recent_entries:
+                if isinstance(entry, dict) and 'content' in entry:
+                    sentiment = self.nlp_processor.analyze_sentiment(entry['content'])
+                    if sentiment.get('sentiment_type') == 'positive':
+                        sentiment_boost += 2
+                        
+            passion_score += min(sentiment_boost, 30)
+        
+        # Fallback to mood-based scoring if NLP not available
+        if daily_entries and not self.nlp_enabled:
+            recent_entries = daily_entries[:30]
+            happy_count = sum(1 for e in recent_entries if isinstance(e, dict) and e.get('mood') in ['happy', 'very_happy'])
             passion_score += (happy_count / max(len(recent_entries), 1)) * 50
         
         return min(100, passion_score)
@@ -57,13 +81,22 @@ class IkigaiRecommendationEngine:
         skill_score = 0
         
         # Base score from profile
-        if user_profile['skills']:
+        if user_profile.get('skills'):
             skill_score += 50
         
-        # Boost from daily entries
-        if daily_entries:
+        # NLP-enhanced skill extraction from daily entries
+        if daily_entries and self.nlp_enabled:
             for entry in daily_entries:
-                if entry.get('skills_used'):
+                if isinstance(entry, dict) and 'content' in entry:
+                    entities = self.nlp_processor.extract_skills_and_entities(entry['content'])
+                    skill_score += len(entities.get('skills', [])) * 1.5
+                elif isinstance(entry, dict) and entry.get('skills_used'):
+                    skill_score += len(entry['skills_used']) * 2
+        
+        # Fallback if NLP not available
+        if daily_entries and not self.nlp_enabled:
+            for entry in daily_entries:
+                if isinstance(entry, dict) and entry.get('skills_used'):
                     skill_score += len(entry['skills_used']) * 2
         
         return min(100, skill_score)
@@ -187,7 +220,7 @@ class IkigaiRecommendationEngine:
     
     def generate_explanation(self, user_name, career_title, match_scores):
         """Generate a human-readable explanation for the recommendation"""
-        explanation = f""
+        explanation = ""
         
         if match_scores['passion_match'] > 70:
             explanation += f"This career aligns strongly with your passions. "
@@ -206,3 +239,81 @@ class IkigaiRecommendationEngine:
             explanation += f"This is a high-growth career with great future prospects. "
         
         return explanation
+    
+    # ============ NLP-ENHANCED RECOMMENDATIONS ============
+    
+    def analyze_user_bio_with_nlp(self, user_bio: str) -> Dict:
+        """
+        Analyze user's bio using NLP to extract insights
+        
+        Args:
+            user_bio: User's biography/profile text
+            
+        Returns:
+            dict: Comprehensive analysis including keywords, entities, sentiment
+        """
+        if not self.nlp_enabled or not user_bio:
+            return {}
+        
+        return self.nlp_processor.process_user_input(user_bio)
+    
+    def calculate_nlp_enhanced_career_match(self, user_profile: Dict, user_bio: str, career: Dict) -> Dict:
+        """
+        Calculate career match using both traditional ML and NLP
+        
+        Args:
+            user_profile: User profile dictionary
+            user_bio: User's biography text
+            career: Career information dictionary
+            
+        Returns:
+            dict: Enhanced match score with NLP insights
+        """
+        if not self.nlp_enabled or not user_bio or not career.get('description'):
+            # Fallback to traditional matching
+            user_vector = self.calculate_user_profile_vector(user_profile, [])
+            return self.calculate_career_match(user_vector, career)
+        
+        # Get traditional score
+        user_vector = self.calculate_user_profile_vector(user_profile, [])
+        traditional_match = self.calculate_career_match(user_vector, career)
+        
+        # Get NLP-enhanced similarity
+        nlp_similarity = self.nlp_processor.profile_similarity_with_career(
+            user_bio, 
+            career.get('description', '')
+        )
+        
+        # Combine traditional and NLP scores (70% traditional, 30% NLP)
+        combined_score = (
+            traditional_match['overall_score'] * 0.7 +
+            nlp_similarity['combined_score'] * 100 * 0.3
+        )
+        
+        return {
+            **traditional_match,
+            'overall_score': min(100, combined_score),
+            'nlp_insights': nlp_similarity,
+            'matching_keywords': nlp_similarity['overlapping_keywords'],
+        }
+    
+    def get_skill_recommendations_from_daily_entries(self, daily_entries: List[Dict]) -> List[str]:
+        """
+        Extract skill recommendations from daily entries using NLP
+        
+        Args:
+            daily_entries: List of user's daily entries
+            
+        Returns:
+            list: Recommended skills to develop
+        """
+        if not self.nlp_enabled or not daily_entries:
+            return []
+        
+        mentioned_skills = set()
+        for entry in daily_entries:
+            if isinstance(entry, dict) and 'content' in entry:
+                entities = self.nlp_processor.extract_skills_and_entities(entry['content'])
+                mentioned_skills.update(entities.get('skills', []))
+        
+        return list(mentioned_skills)

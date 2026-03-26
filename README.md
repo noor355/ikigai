@@ -8,6 +8,7 @@ An AI-powered career recommendation platform based on the Ikigai framework. The 
 - **Database**: Supabase (PostgreSQL)
 - **Frontend**: React
 - **ML Engine**: scikit-learn, TensorFlow
+- **NLP Engine**: HuggingFace Transformers, Sentence Transformers
 - **Authentication**: JWT
 
 ## 📋 Prerequisites
@@ -188,7 +189,47 @@ Currently includes 10+ future-oriented careers:
 - Renewable Energy Engineer
 - Biotechnology Specialist
 
-## 🧪 Testing the API
+## � NLP Engine Details
+
+The system now includes advanced Natural Language Processing capabilities:
+
+### NLP Features
+1. **Sentiment Analysis** - Analyzes emotional tone in daily entries to score passion
+2. **Keyword Extraction** - Pulls important terms to identify user interests
+3. **Named Entity Recognition** - Detects skills, technologies, and organizations mentioned
+4. **Semantic Similarity** - Compares user profile with career descriptions conceptually
+5. **Text Summarization** - Condenses long texts for better analysis
+
+### Models Used
+- **Sentiment**: DistilBERT (lightweight, ~250MB)
+- **NER**: BERT-base-uncased (entity detection, ~500MB)
+- **Embeddings**: MiniLM-L6-v2 (semantic similarity, ~100MB)
+- **Summarization**: BART-large-cnn (text condensing, ~1.2GB)
+
+### Integration with ML Engine
+- **Enhanced Passion Scoring**: Uses sentiment analysis on daily entry text
+- **Better Skill Detection**: Extracts skills mentioned in text, not just predefined lists
+- **NLP-Enhanced Career Matching**: Combines traditional ML (70%) + NLP (30%) scoring
+- **Skill Recommendations**: Automatically detected from user writings
+
+### Usage Example
+```python
+from ml_engine.recommendation_engine import IkigaiRecommendationEngine
+
+engine = IkigaiRecommendationEngine()
+
+# Enhanced career matching with NLP
+match = engine.calculate_nlp_enhanced_career_match(
+    user_profile={"skills": ["Python"], "experience": 3},
+    user_bio="I love AI and solving complex problems",
+    career={"title": "ML Engineer", "description": "..."}
+)
+# Returns: {overall_score, passion_match, skill_match, nlp_insights, matching_keywords}
+```
+
+For full NLP documentation, see [backend/ml_engine/NLP_README.md](backend/ml_engine/NLP_README.md)
+
+## �🧪 Testing the API
 
 ```bash
 # Register
