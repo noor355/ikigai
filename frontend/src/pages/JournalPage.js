@@ -31,7 +31,7 @@ function JournalPage() {
       };
 
       // Sending the journal entry to your FastAPI backend
-      await axios.post("http://localhost:8000/api/v1/daily", payload, {
+      await axios.post("http://localhost:8000/api/v1/daily-entries", payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
