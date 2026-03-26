@@ -1,3 +1,4 @@
+import JournalHistoryPage from "./pages/JournalHistoryPage";
 import { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import AuthPage from "./pages/AuthPage";
@@ -21,6 +22,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/journal" element={<JournalPage />} />
+          <Route path="/history" element={<JournalHistoryPage />} />
           <Route path="/tests" element={<TestsPage />} />
         </Route>
       </Routes>
