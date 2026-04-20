@@ -1,0 +1,15 @@
+{
+  "name": "ikigai-app",
+  "version": "1.0.0",
+  "description": "Ikigai Career Discovery - Full Stack Application",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend && .venv/Scripts/python main.py",
+    "frontend": "cd frontend && npm start",
+    "build": "cd frontend && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

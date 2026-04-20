@@ -2,10 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User, Recommendation, DailyEntry
-from schemas import RecommendationResponse
+from schemas import RecommendationResponse, DailyEntryCreate
 from security import get_current_active_user
-from ml_engine import recommendation_engine
-from datetime import datetime, timedelta
+from ml_engine.recommendation_engine import create_recommendation_engine
+from datetime import datetime
+import json
 
 router = APIRouter(prefix="/api/v1/recommendations", tags=["recommendations"])
 
@@ -36,73 +37,156 @@ def generate_recommendations(
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User profile not complete"
+            detail="User profile incomplete. Please complete your profile first."
         )
     
-    # Get initial recommendations
-    initial_recs = recommendation_engine.get_recommendations(
-        user_skills=profile.skills or [],
-        user_interests=profile.interests or [],
-        user_values=profile.values or [],
-        user_passions=profile.passion_areas or [],
-        top_n=top_n
-    )
-    
-    # Enhance with daily entries data for more accuracy
-    recent_entries = db.query(DailyEntry).filter(
+    # Get daily entries
+    daily_entries = db.query(DailyEntry).filter(
         DailyEntry.user_id == current_user.id
-    ).order_by(DailyEntry.date.desc()).limit(7).all()
+    ).order_by(DailyEntry.date.desc()).all()
     
-    combined_activities = []
-    combined_learnings = ""
-    combined_interests = []
+    # Create recommendation engine
+    engine = create_recommendation_engine()
     
-    for entry in recent_entries:
-        combined_activities.extend(entry.activities or [])
-        if entry.learnings:
-            combined_learnings += " " + entry.learnings
-        combined_interests.extend(entry.interests_explored or [])
+    # Analyze user profile
+    user_vector = engine.analyze_user_profile(profile, daily_entries)
     
-    # Update recommendations based on daily data
-    if recent_entries:
-        enhanced_recs = recommendation_engine.update_recommendations_with_daily_data(
-            initial_recs,
-            combined_activities,
-            combined_learnings,
-            combined_interests
-        )
-    else:
-        enhanced_recs = initial_recs
+    # Find matching careers
+    matched_careers = engine.find_matching_careers(user_vector, top_n)
     
-    # Clear old recommendations and save new ones
+    # Save recommendations to database
     db.query(Recommendation).filter(
         Recommendation.user_id == current_user.id
     ).delete()
     
-    for rec in enhanced_recs:
+    saved_recommendations = []
+    
+    for career_match in matched_careers:
+        career = career_match['career']
+        
         recommendation = Recommendation(
             user_id=current_user.id,
-            career_title=rec["career_title"],
-            description=rec["description"],
-            match_score=rec["match_score"],
-            reasoning=rec["reasoning"],
-            required_skills=rec["required_skills"],
-            growth_potential=rec["growth_potential"],
-            market_demand=rec["market_demand"],
-            salary_range_min=rec["salary_range_min"],
-            salary_range_max=rec["salary_range_max"],
-            future_oriented=rec["future_oriented"]
+            career_title=career_match['title'],
+            description=career_match['description'],
+            match_score=career_match['match_score'],
+            reasoning=json.dumps(career_match['reasoning']),
+            required_skills=career.get('required_skills', []),
+            growth_potential=career.get('growth_potential'),
+            market_demand=career.get('market_demand'),
+            salary_range_min=career.get('salary_range', (0, 0))[0],
+            salary_range_max=career.get('salary_range', (0, 0))[1],
+            future_oriented=True
         )
         db.add(recommendation)
+        db.flush()
+        saved_recommendations.append({
+            'id': recommendation.id,
+            'career_title': recommendation.career_title,
+            'match_score': recommendation.match_score,
+            'reasoning': career_match['reasoning'],
+            'skill_gaps': career_match.get('skill_gaps', []),
+            'learning_path': career_match.get('learning_path', []),
+        })
     
     db.commit()
     
     return {
-        "message": "Recommendations generated successfully",
-        "count": len(enhanced_recs),
-        "recommendations": enhanced_recs
+        'status': 'success',
+        'message': f'Generated {len(saved_recommendations)} recommendations based on your profile',
+        'recommendations': saved_recommendations,
+        'user_profile_analysis': {
+            'passion_score': user_vector['passion_score'],
+            'skills_score': user_vector['skills_score'],
+            'values_score': user_vector['values_score'],
+            'market_readiness': user_vector['market_readiness'],
+            'overall_readiness': user_vector['overall_readiness'],
+        }
     }
 
+
+@router.post("/save-daily-entry")
+def save_daily_entry(
+    entry_data: DailyEntryCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Save a daily journal entry"""
+    
+    entry = DailyEntry(
+        user_id=current_user.id,
+        activities=entry_data.activities,
+        learnings=entry_data.learnings,
+        challenges=entry_data.challenges,
+        mood=entry_data.mood,
+        notes=entry_data.notes,
+        date=datetime.utcnow()
+    )
+    
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    
+    return {
+        'status': 'success',
+        'message': 'Daily entry saved successfully',
+        'entry_id': entry.id,
+    }
+
+
+@router.get("/analysis")
+def get_recommendation_analysis(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get detailed analysis of user's recommendation profile"""
+    
+    profile = current_user.profile
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User profile incomplete"
+        )
+    
+    daily_entries = db.query(DailyEntry).filter(
+        DailyEntry.user_id == current_user.id
+    ).all()
+    
+    engine = create_recommendation_engine()
+    user_vector = engine.analyze_user_profile(profile, daily_entries)
+    
+    return {
+        'status': 'success',
+        'analysis': user_vector,
+        'total_daily_entries': len(daily_entries),
+        'profile_completeness': calculate_profile_completeness(profile),
+    }
+
+
+def calculate_profile_completeness(profile) -> float:
+    """Calculate how complete the user's profile is (0-100%)"""
+    completeness = 0
+    total_fields = 0
+    
+    fields_to_check = [
+        'age', 'education_level', 'work_experience_years',
+        'bio', 'interests', 'skills', 'values', 'passion_areas', 'location'
+    ]
+    
+    for field in fields_to_check:
+        total_fields += 1
+        value = getattr(profile, field, None)
+        
+        if value:
+            if isinstance(value, (list, dict)):
+                if len(value) > 0:
+                    completeness += 1
+            else:
+                completeness += 1
+    
+    if total_fields == 0:
+        return 0
+    
+    return (completeness / total_fields) * 100
 
 @router.get("/{career_id}", response_model=RecommendationResponse)
 def get_recommendation_details(

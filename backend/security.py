@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 from models import User
 import schemas
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing - using argon2 for better compatibility
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")

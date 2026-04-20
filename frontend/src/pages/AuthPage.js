@@ -3,16 +3,34 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 function AuthPage({ setToken }) {
-  const [email, setEmail] = useState("");
+  // Register form state
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  
+  // Login form state
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  
   const [message, setMessage] = useState("");
   const navigate = useNavigate(); // This is our new router tool!
 
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:8000/api/v1/auth/register", { email, password });
+      await axios.post("http://localhost:8000/api/v1/auth/register", { 
+        email: registerEmail, 
+        username,
+        password,
+        full_name: fullName
+      });
       setMessage("Success! User registered. You can now log in.");
+      // Clear register form
+      setRegisterEmail("");
+      setUsername("");
+      setPassword("");
+      setFullName("");
     } catch (error) {
       setMessage(`Registration Error: ${error.response?.data?.detail || error.message}`);
     }
@@ -21,10 +39,10 @@ function AuthPage({ setToken }) {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:8000/api/v1/auth/login", { email, password });
+      const res = await axios.post("http://localhost:8000/api/v1/auth/login", { email: loginEmail, password: loginPassword });
       setToken(res.data.access_token);
       localStorage.setItem("token", res.data.access_token);
-      navigate("/dashboard"); // Instantly warp the user to the dashboard page!
+      navigate("/dashboard");
     } catch (error) {
       setMessage(`Login Error: ${error.response?.data?.detail || error.message}`);
     }
@@ -38,15 +56,17 @@ function AuthPage({ setToken }) {
       <div style={{ display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: "20px" }}>
         <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", width: "300px", gap: "10px", padding: "20px", border: "1px solid #ccc", borderRadius: "8px" }}>
           <h2>Create Account</h2>
-          <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required style={{ padding: "8px" }} />
+          <input type="email" placeholder="Email" value={registerEmail} onChange={e => setRegisterEmail(e.target.value)} required style={{ padding: "8px" }} />
+          <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} required style={{ padding: "8px" }} />
+          <input type="text" placeholder="Full Name (optional)" value={fullName} onChange={e => setFullName(e.target.value)} style={{ padding: "8px" }} />
           <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required style={{ padding: "8px" }} />
           <button type="submit" style={{ padding: "10px", backgroundColor: "#28a745", color: "white", cursor: "pointer" }}>Register</button>
         </form>
 
         <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", width: "300px", gap: "10px", padding: "20px", border: "1px solid #ccc", borderRadius: "8px" }}>
           <h2>Login</h2>
-          <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required style={{ padding: "8px" }} />
-          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required style={{ padding: "8px" }} />
+          <input type="email" placeholder="Email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required style={{ padding: "8px" }} />
+          <input type="password" placeholder="Password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required style={{ padding: "8px" }} />
           <button type="submit" style={{ padding: "10px", backgroundColor: "#007bff", color: "white", cursor: "pointer" }}>Login</button>
         </form>
       </div>

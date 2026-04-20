@@ -7,8 +7,8 @@ import routes_profile
 import routes_daily
 import routes_recommendations
 
-# Create database tables (commented out for testing without database)
-# Base.metadata.create_all(bind=engine)
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -17,12 +17,21 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS middleware
+# Add CORS middleware - explicitly set origins
+cors_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:8000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:8000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

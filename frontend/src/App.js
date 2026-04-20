@@ -5,6 +5,7 @@ import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
 import ChatPage from "./pages/ChatPage";
 import JournalPage from "./pages/JournalPage";
+import RecommendationsPage from "./pages/RecommendationsPage";
 import TestsPage from "./pages/TestsPage";
 import Layout from "./components/Layout";
 
@@ -20,6 +21,7 @@ function App() {
         {/* Protected App Pages (Wrapped inside the new Layout) */}
         <Route element={token ? <Layout setToken={setToken} /> : <Navigate to="/" />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/recommendations" element={<RecommendationsPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/journal" element={<JournalPage />} />
           <Route path="/history" element={<JournalHistoryPage />} />

@@ -15,6 +15,7 @@ function Layout({ setToken }) {
 
   const menuItems = [
     { name: "Dashboard", path: "/dashboard", icon: "📊" },
+    { name: "Recommendations", path: "/recommendations", icon: "🎯" },
     { name: "AI Coach", path: "/chat", icon: "💬" },
     { name: "New Journal", path: "/journal", icon: "✍️" },
     { name: "Journal History", path: "/history", icon: "🕰️" },

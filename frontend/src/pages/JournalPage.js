@@ -1,105 +1,305 @@
-import { useState } from "react";
-import axios from "axios";
+import React, { useState } from 'react';
+import axios from 'axios';
+import './JournalPage.css';
 
-function JournalPage() {
-  const [entry, setEntry] = useState("");
-  const [status, setStatus] = useState("");
+const JournalPage = () => {
+  const [formData, setFormData] = useState({
+    activities: [],
+    learnings: '',
+    challenges: '',
+    mood: 'neutral',
+    notes: '',
+    currentActivity: '',
+  });
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const handleActivityAdd = () => {
+    if (formData.currentActivity.trim()) {
+      setFormData({
+        ...formData,
+        activities: [...formData.activities, formData.currentActivity.trim()],
+        currentActivity: '',
+      });
+    }
+  };
+
+  const handleActivityRemove = (index) => {
+    setFormData({
+      ...formData,
+      activities: formData.activities.filter((_, i) => i !== index),
+    });
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!entry.trim()) return;
-    
     setLoading(true);
-    setStatus("");
+    setMessage('');
 
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem('token');
       
-      // We only send 'activities' (required by the database) and 'notes' (the journal content).
-      // Your Python backend will automatically handle the rest!
-      const payload = {
-        activities: ["Freeform Journal"],
-        notes: entry
-      };
+      const response = await axios.post(
+        'http://localhost:8000/api/v1/recommendations/save-daily-entry',
+        {
+          activities: formData.activities.length > 0 ? formData.activities : ['Journal entry'],
+          learnings: formData.learnings || null,
+          challenges: formData.challenges || null,
+          mood: formData.mood,
+          notes: formData.notes || null,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-      await axios.post("http://localhost:8000/api/v1/daily-entries/", payload, {
-        headers: { Authorization: `Bearer ${token}` }
+      setMessage('✅ Daily entry saved! This helps personalize your career recommendations.');
+      
+      // Reset form
+      setFormData({
+        activities: [],
+        learnings: '',
+        challenges: '',
+        mood: 'neutral',
+        notes: '',
+        currentActivity: '',
       });
-
-      setStatus("✨ Entry secured. Your AI coach is quietly analyzing this.");
-      setEntry(""); // Clear the page for tomorrow
     } catch (error) {
-      console.error(error);
-      setStatus("❌ Error saving entry. Make sure your backend server is running!");
+      setMessage(`❌ Error: ${error.response?.data?.detail || error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: "40px", fontFamily: "sans-serif", maxWidth: "800px", margin: "0 auto", height: "100%" }}>
-      
-      <div style={{ marginBottom: "30px" }}>
-        <h2 style={{ margin: "0 0 10px 0" }}>Your Journal</h2>
-        <p style={{ color: "#6c757d", margin: 0 }}>
-          Write about your day, your random thoughts, or anything on your mind. 
-          There are no rules. Your AI uses this context to guide you later.
+    <div style={{ padding: '40px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ marginBottom: '30px' }}>
+        <h2 style={{ margin: '0 0 10px 0' }}>📝 Daily Journal</h2>
+        <p style={{ color: '#6c757d', margin: 0 }}>
+          Record your daily activities, learnings, and experiences. The AI analyzes these to recommend the perfect career for you!
         </p>
       </div>
 
-      <div style={{ backgroundColor: "#ffffff", padding: "30px", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", height: "60vh" }}>
-        
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", flex: 1, gap: "20px" }}>
-          
-          <textarea 
-            value={entry} 
-            onChange={(e) => setEntry(e.target.value)}
-            placeholder="Dear Journal..."
-            style={{ 
-              flex: 1, 
-              padding: "20px", 
-              borderRadius: "8px", 
-              border: "none", 
-              backgroundColor: "#f8fafc",
-              fontSize: "16px",
-              lineHeight: "1.6",
-              resize: "none",
-              outline: "none",
-              fontFamily: "inherit",
-              boxShadow: "inset 0 2px 4px 0 rgba(0, 0, 0, 0.05)"
+      {message && (
+        <div style={{
+          padding: '12px 16px',
+          marginBottom: '20px',
+          borderRadius: '4px',
+          backgroundColor: message.includes('✅') ? '#d4edda' : '#f8d7da',
+          color: message.includes('✅') ? '#155724' : '#721c24',
+          border: `1px solid ${message.includes('✅') ? '#c3e6cb' : '#f5c6cb'}`,
+        }}>
+          {message}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} style={{ backgroundColor: '#f8f9fa', padding: '24px', borderRadius: '8px' }}>
+        {/* Activities */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>🎯 What did you do today?</label>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <input
+              type="text"
+              placeholder="E.g., Coded, Analyzed data, Designed UI..."
+              value={formData.currentActivity}
+              onChange={(e) => setFormData({ ...formData, currentActivity: e.target.value })}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleActivityAdd();
+                }
+              }}
+              style={{
+                flex: 1,
+                padding: '10px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                fontSize: '14px',
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleActivityAdd}
+              style={{
+                padding: '10px 16px',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+            >
+              + Add
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {formData.activities.map((activity, index) => (
+              <div
+                key={index}
+                style={{
+                  backgroundColor: '#e2e3e5',
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '14px',
+                }}
+              >
+                <span>{activity}</span>
+                <button
+                  type="button"
+                  onClick={() => handleActivityRemove(index)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#999',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Learnings */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>💡 What did you learn?</label>
+          <textarea
+            name="learnings"
+            placeholder="New skills, insights, concepts..."
+            value={formData.learnings}
+            onChange={handleInputChange}
+            rows="3"
+            style={{
+              width: '100%',
+              padding: '10px',
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              fontFamily: 'inherit',
+              fontSize: '14px',
+              boxSizing: 'border-box',
             }}
           />
+        </div>
 
-          <button 
-            type="submit" 
-            disabled={loading || !entry.trim()}
-            style={{ 
-              padding: "15px", 
-              backgroundColor: loading || !entry.trim() ? "#cbd5e1" : "#10b981", 
-              color: "white", 
-              border: "none", 
-              borderRadius: "8px", 
-              cursor: loading || !entry.trim() ? "not-allowed" : "pointer",
-              fontWeight: "bold",
-              fontSize: "16px",
-              transition: "background-color 0.2s"
+        {/* Challenges */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>⚡ What was challenging?</label>
+          <textarea
+            name="challenges"
+            placeholder="Difficulties, what made you think, areas to improve..."
+            value={formData.challenges}
+            onChange={handleInputChange}
+            rows="3"
+            style={{
+              width: '100%',
+              padding: '10px',
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              fontFamily: 'inherit',
+              fontSize: '14px',
+              boxSizing: 'border-box',
             }}
-          >
-            {loading ? "Saving to memory..." : "Save Entry"}
-          </button>
+          />
+        </div>
 
-          {/* Success/Error Message */}
-          {status && (
-            <div style={{ padding: "15px", backgroundColor: status.includes("Error") ? "#fee2e2" : "#dcfce7", color: status.includes("Error") ? "#991b1b" : "#166534", borderRadius: "8px", textAlign: "center", fontWeight: "500" }}>
-              {status}
-            </div>
-          )}
+        {/* Mood */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '12px' }}>😊 How was your mood?</label>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            {[
+              { value: 'very_happy', emoji: '😄', label: 'Very Happy' },
+              { value: 'happy', emoji: '😊', label: 'Happy' },
+              { value: 'neutral', emoji: '😐', label: 'Neutral' },
+              { value: 'sad', emoji: '😔', label: 'Sad' },
+              { value: 'very_sad', emoji: '😢', label: 'Very Sad' },
+            ].map((mood) => (
+              <label key={mood.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="mood"
+                  value={mood.value}
+                  checked={formData.mood === mood.value}
+                  onChange={handleInputChange}
+                />
+                <span style={{ fontSize: '20px' }}>{mood.emoji}</span>
+              </label>
+            ))}
+          </div>
+        </div>
 
-        </form>
+        {/* Notes */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>📌 Notes</label>
+          <textarea
+            name="notes"
+            placeholder="Any other thoughts or observations..."
+            value={formData.notes}
+            onChange={handleInputChange}
+            rows="3"
+            style={{
+              width: '100%',
+              padding: '10px',
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              fontFamily: 'inherit',
+              fontSize: '14px',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '12px',
+            backgroundColor: loading ? '#ccc' : '#28a745',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            cursor: loading ? 'default' : 'pointer',
+          }}
+        >
+          {loading ? '⏳ Saving...' : '💾 Save Entry & Update Recommendations'}
+        </button>
+      </form>
+
+      <div style={{
+        marginTop: '32px',
+        padding: '20px',
+        backgroundColor: '#e7f3ff',
+        borderRadius: '8px',
+        border: '1px solid #b3d9ff',
+      }}>
+        <h4 style={{ marginTop: 0 }}>💫 Tips for Better Recommendations:</h4>
+        <ul style={{ margin: '10px 0', paddingLeft: '20px' }}>
+          <li><strong>Be honest:</strong> Record what you actually did</li>
+          <li><strong>Be specific:</strong> Details help the AI understand you</li>
+          <li><strong>Be consistent:</strong> Daily entries improve accuracy</li>
+          <li><strong>Share challenges:</strong> Growth areas define your ideal career</li>
+        </ul>
       </div>
     </div>
   );
-}
+};
 
 export default JournalPage;
