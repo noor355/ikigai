@@ -11,7 +11,7 @@ import json
 router = APIRouter(prefix="/api/v1/recommendations", tags=["recommendations"])
 
 
-@router.get("/", response_model=list[RecommendationResponse])
+@router.get("/")
 def get_recommendations(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -21,7 +21,28 @@ def get_recommendations(
         Recommendation.user_id == current_user.id
     ).order_by(Recommendation.created_at.desc()).all()
     
-    return recommendations
+    # Convert to dict and parse JSON reasoning
+    result = []
+    for rec in recommendations:
+        rec_dict = {
+            'id': rec.id,
+            'user_id': rec.user_id,
+            'career_title': rec.career_title,
+            'description': rec.description,
+            'match_score': rec.match_score,
+            'reasoning': json.loads(rec.reasoning) if isinstance(rec.reasoning, str) else rec.reasoning,
+            'required_skills': rec.required_skills or [],
+            'growth_potential': rec.growth_potential,
+            'market_demand': rec.market_demand,
+            'salary_range_min': rec.salary_range_min,
+            'salary_range_max': rec.salary_range_max,
+            'future_oriented': rec.future_oriented,
+            'created_at': rec.created_at,
+            'updated_at': rec.updated_at,
+        }
+        result.append(rec_dict)
+    
+    return result
 
 
 @router.post("/generate")
@@ -62,19 +83,17 @@ def generate_recommendations(
     saved_recommendations = []
     
     for career_match in matched_careers:
-        career = career_match['career']
-        
         recommendation = Recommendation(
             user_id=current_user.id,
             career_title=career_match['title'],
             description=career_match['description'],
             match_score=career_match['match_score'],
             reasoning=json.dumps(career_match['reasoning']),
-            required_skills=career.get('required_skills', []),
-            growth_potential=career.get('growth_potential'),
-            market_demand=career.get('market_demand'),
-            salary_range_min=career.get('salary_range', (0, 0))[0],
-            salary_range_max=career.get('salary_range', (0, 0))[1],
+            required_skills=career_match.get('required_skills', []),
+            growth_potential=career_match.get('growth_potential'),
+            market_demand=career_match.get('market_demand'),
+            salary_range_min=career_match.get('salary_range', (0, 0))[0],
+            salary_range_max=career_match.get('salary_range', (0, 0))[1],
             future_oriented=True
         )
         db.add(recommendation)
