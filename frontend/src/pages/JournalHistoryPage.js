@@ -16,6 +16,10 @@ function JournalHistoryPage() {
         setHistory(res.data);
       } catch (error) {
         console.error("Failed to load history", error);
+        if (error.response && error.response.status === 401) {
+          localStorage.removeItem("token");
+          window.location.href = "/";
+        }
       } finally {
         setLoading(false);
       }

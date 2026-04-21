@@ -76,6 +76,11 @@ const JournalPage = () => {
         currentActivity: '',
       });
     } catch (error) {
+      console.error("Submission error", error);
+      if (error.response && error.response.status === 401) {
+        localStorage.removeItem("token");
+        window.location.href = "/";
+      }
       setMessage(`❌ Error: ${error.response?.data?.detail || error.message}`);
     } finally {
       setLoading(false);
