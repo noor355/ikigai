@@ -21,18 +21,26 @@ class NLPProcessor:
             model="distilbert-base-uncased-finetuned-sst-2-english"
         )
         
-        # Named Entity Recognition
-        self.ner_pipeline = pipeline(
-            "ner",
-            model="dslim/bert-base-uncased-ner",
-            aggregation_strategy="simple"
-        )
+        # Named Entity Recognition - Switching to a more reliable model name
+        try:
+            self.ner_pipeline = pipeline(
+                "ner",
+                model="dbmdz/bert-large-cased-finetuned-conll03-english",
+                aggregation_strategy="simple"
+            )
+        except Exception:
+            self.ner_pipeline = None
+            print("NER Model failed to load, using fallback keyword extraction")
         
-        # Summarization (for longer texts)
-        self.summarizer = pipeline(
-            "summarization",
-            model="facebook/bart-large-cnn"
-        )
+        # Summarization (for longer texts) - Fixed fallback for specific environments
+        try:
+            self.summarizer = pipeline(
+                "summarization",
+                model="facebook/bart-large-cnn"
+            )
+        except Exception:
+            print("Summarization pipeline unavailable, using fallback logic")
+            self.summarizer = None
         
         # Semantic embeddings for similarity
         self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')

@@ -5,7 +5,8 @@ Analyzes user profile and daily entries to recommend future-oriented careers
 
 from typing import Dict, List, Any
 from .career_database import get_all_careers
-
+from .nlp_processor import NLPProcessor
+from .trainer import ModelTrainer
 
 class IkigaiRecommendationEngine:
     """Main recommendation engine based on Ikigai framework"""
@@ -17,9 +18,18 @@ class IkigaiRecommendationEngine:
         self.values_weight = 0.20
         self.market_weight = 0.15
         
-        # NLP processor disabled for performance - can be enabled later
-        self.nlp_enabled = False
-        self.nlp_processor = None
+        # Enable NLP processor
+        self.nlp_enabled = True
+        try:
+            self.nlp_processor = NLPProcessor()
+            # Initialize Trainer for TF-IDF Similarity (from notebook)
+            self.trainer = ModelTrainer()
+            self.trainer.train_from_career_database(self.careers)
+        except Exception as e:
+            print(f"Failed to initialize NLP Processor: {e}")
+            self.nlp_enabled = False
+            self.nlp_processor = None
+            self.trainer = None
     
     def analyze_user_profile(self, user_profile, daily_entries):
         """
@@ -52,12 +62,21 @@ class IkigaiRecommendationEngine:
         if hasattr(user_profile, 'interests') and user_profile.interests:
             score += 15
         
-        # Analyze daily entries
+        # Analyze daily entries using NLP if enabled
         if daily_entries:
-            positive_moods = sum(1 for e in daily_entries[-30:] 
-                                if hasattr(e, 'mood') and e.mood in ['happy', 'very_happy', 'excited'])
-            if len(daily_entries) > 0:
-                score += (positive_moods / len(daily_entries[-30:])) * 15
+            if self.nlp_enabled and self.nlp_processor:
+                # Combine last 5 entries for a sentiment snapshot
+                recent_texts = [e.notes for e in daily_entries[-5:] if hasattr(e, 'notes') and e.notes]
+                if recent_texts:
+                    sentiments = [self.nlp_processor.analyze_sentiment(text) for text in recent_texts]
+                    positive_count = sum(1 for s in sentiments if s.get('sentiment_type') == 'positive')
+                    score += (positive_count / len(recent_texts)) * 15
+            else:
+                # Fallback to categorical mood field
+                positive_moods = sum(1 for e in daily_entries[-30:] 
+                                    if hasattr(e, 'mood') and e.mood in ['happy', 'very_happy', 'excited'])
+                if len(daily_entries) > 0:
+                    score += (positive_moods / len(daily_entries[-30:])) * 15
         
         return min(100, score)
     
@@ -120,8 +139,24 @@ class IkigaiRecommendationEngine:
         """
         matches = []
         
+        # New: Get TF-IDF similarities from Trainer (from notebook approach)
+        tfidf_scores = {}
+        if self.nlp_enabled and self.trainer:
+            combined_queries = " ".join([
+                *user_vector.get('passion_keywords', []),
+                *user_vector.get('skill_keywords', []),
+                *user_vector.get('value_keywords', [])
+            ])
+            recs = self.trainer.get_recommendations(combined_queries, top_n=50)
+            tfidf_scores = {r['career']: r['score'] for r in recs}
+        
         for career in self.careers:
             match_score = self._calculate_career_match(user_vector, career)
+            
+            # Boost score based on TF-IDF similarity (up to +20 points)
+            if career['title'] in tfidf_scores:
+                match_score += (tfidf_scores[career['title']] * 20)
+            
             reasoning = self._generate_reasoning(user_vector, career, match_score)
             skill_gaps = self._identify_skill_gaps(user_vector, career)
             
@@ -129,7 +164,7 @@ class IkigaiRecommendationEngine:
                 'career_id': career['id'],
                 'title': career['title'],
                 'description': career['description'],
-                'match_score': match_score,
+                'match_score': min(100, round(match_score, 1)),
                 'reasoning': reasoning,
                 'skill_gaps': skill_gaps,
                 'learning_path': career.get('learning_path', []),
@@ -138,6 +173,7 @@ class IkigaiRecommendationEngine:
                 'market_demand': career.get('market_demand'),
                 'future_relevance': career.get('future_relevance'),
                 'required_skills': career.get('required_skills', []),
+                'tfidf_similarity': tfidf_scores.get(career['title'], 0)
             })
         
         matches.sort(key=lambda x: x['match_score'], reverse=True)
@@ -224,6 +260,14 @@ class IkigaiRecommendationEngine:
         return reasoning
 
 
+# Singleton instance
+_engine_instance = None
+
 def create_recommendation_engine():
-    """Factory function to create engine instance"""
-    return IkigaiRecommendationEngine()
+    """Factory function to get or create engine instance (Singleton)"""
+    global _engine_instance
+    if _engine_instance is None:
+        print("Initializing Global Recommendation Engine (This may take a minute first time)...")
+        _engine_instance = IkigaiRecommendationEngine()
+    return _engine_instance
+

@@ -110,6 +110,23 @@ const JournalPage = () => {
       )}
 
       <form onSubmit={handleSubmit} style={{ backgroundColor: '#f8f9fa', padding: '24px', borderRadius: '8px' }}>
+        {/* Helper Prompts */}
+        <div style={{ marginBottom: '20px', padding: '12px', background: '#e9ecef', borderRadius: '6px' }}>
+          <small style={{ fontWeight: 'bold', color: '#495057', display: 'block', marginBottom: '5px' }}>💡 Need inspiration? Try writing about:</small>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+            {['Working with data', 'Designing apps', 'Leading a team', 'Problem solving', 'Cybersecurity'].map(prompt => (
+              <button 
+                type="button"
+                key={prompt}
+                onClick={() => setFormData({...formData, currentActivity: prompt})}
+                style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '15px', border: '1px solid #ced4da', cursor: 'pointer', background: 'white' }}
+              >
+                + {prompt}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Activities */}
         <div style={{ marginBottom: '24px' }}>
           <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>🎯 What did you do today?</label>

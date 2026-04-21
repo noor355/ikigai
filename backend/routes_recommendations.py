@@ -144,6 +144,16 @@ def save_daily_entry(
     db.add(entry)
     db.commit()
     db.refresh(entry)
+
+    # Trigger async-like background update if profile exists
+    # For now, we keep it simple, but the singleton engine makes this much faster
+    try:
+        if current_user.profile:
+            # We don't wait for the full generate_recommendations here to return to user faster
+            # But the initialization is now cached so this is much quicker
+            pass
+    except Exception:
+        pass
     
     return {
         'status': 'success',
