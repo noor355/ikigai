@@ -6,6 +6,7 @@ import routes_auth
 import routes_profile
 import routes_daily
 import routes_recommendations
+import routes_chat_new
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -40,6 +41,7 @@ app.include_router(routes_auth.router)
 app.include_router(routes_profile.router)
 app.include_router(routes_daily.router)
 app.include_router(routes_recommendations.router)
+app.include_router(routes_chat_new.router)
 
 
 @app.get("/")

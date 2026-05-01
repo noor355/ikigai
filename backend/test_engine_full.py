@@ -56,8 +56,9 @@ def test_recommendation_pipeline():
     for i, match in enumerate(matches):
         print(f"\nMatch #{i+1}: {match['title']}")
         print(f"Score: {match['match_score']}%")
-        print(f"Reasoning: {match['reasoning']['primary_reason']}")
-        print(f"Skill Gap: {match['reasoning']['skill_alignment']}")
+        print(f"Summary: {match['reasoning']['summary']}")
+        print(f"Strengths: {', '.join(match['reasoning']['strengths'])}")
+        print(f"Skill Gap: {match['skill_gaps']}")
 
 if __name__ == "__main__":
     try:
