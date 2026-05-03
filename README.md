@@ -13,11 +13,60 @@ An AI-powered career recommendation platform based on the Ikigai framework. The 
 
 ## 📋 Prerequisites
 
-- Python 3.9+
-- Node.js 14+
-- Supabase Account (free at https://supabase.com)
+- **Python 3.11+** (required - project tested with 3.11)
+- **Node.js 14+**
+- **Supabase Account** (free at https://supabase.com)
+- Virtual environment setup in `backend/.venv`
+- Dependencies installed (`pip install -r requirements.txt`)
+- `.env` file configured with `DATABASE_URL`
 
-## 🔧 Backend Setup with Supabase
+> **First time setup?** See [Backend Setup with Supabase](#-backend-setup-with-supabase) below
+
+## ⚡ Quick Start (For Returning Users)
+
+### One-Command Startup (Windows)
+```powershell
+cd d:\FAST\6th semester\AI\ikigai1\ikigai
+.\run-all.bat
+```
+This starts both backend and frontend in separate windows.
+
+### Manual Startup (If batch file doesn't work)
+
+**Terminal 1 - Backend:**
+```powershell
+cd d:\FAST\6th semester\AI\ikigai1\ikigai\backend
+.\.venv\Scripts\activate
+python main.py
+```
+Backend runs at: **http://localhost:8000**
+
+**Terminal 2 - Frontend:**
+```powershell
+cd d:\FAST\6th semester\AI\ikigai1\ikigai\frontend
+npm start
+```
+Frontend runs at: **http://localhost:3001** (or 3000 if 3001 is in use)
+
+### Accessing the Application
+- **Frontend UI:** http://localhost:3001 (register/login here)
+- **Backend API:** http://localhost:8000/api/v1/...
+- **API Documentation:** http://localhost:8000/docs
+
+### Common Issues & Solutions
+
+| Issue | Solution |
+|-------|----------|
+| Backend won't start | Check Python version (`python --version` should be 3.11+). Ensure `.venv` is activated. |
+| Port 3000/3001 already in use | Kill existing Node process: `taskkill /F /IM node.exe` then retry |
+| Port 8000 already in use | Kill existing Python: `taskkill /F /IM python.exe` then retry |
+| Login returns 401 | Normal for new users - register first on the "Create Account" tab |
+| Backend connection error from frontend | Make sure backend is running on port 8000 (check `http://localhost:8000`) |
+| argon2-cffi missing error | Run: `.\.venv\Scripts\pip install argon2-cffi` in backend folder |
+
+---
+
+## 🔧 Backend Setup with Supabase (First Time Only)
 
 ### Step 1: Create Supabase Project
 
