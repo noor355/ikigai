@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { FiEdit3, FiBookOpen, FiAlertCircle, FiSmile, FiSave, FiZap } from 'react-icons/fi';
+import { MdAutoAwesome } from 'react-icons/md';
 import './JournalPage.css';
 
 const JournalPage = () => {
@@ -88,38 +90,51 @@ const JournalPage = () => {
   };
 
   return (
-    <div style={{ padding: '40px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '30px' }}>
-        <h2 style={{ margin: '0 0 10px 0' }}>📝 Daily Journal</h2>
-        <p style={{ color: '#6c757d', margin: 0 }}>
-          Record your daily activities, learnings, and experiences. The AI analyzes these to recommend the perfect career for you!
-        </p>
-      </div>
+    <div className="journal-page">
+      <div className="journal-container">
+        {/* Header with Illustration Space */}
+        <div className="journal-header">
+          <div className="journal-header-content">
+            <div className="journal-header-text">
+              <h2><FiEdit3 style={{ display: 'inline', marginRight: '10px' }} />Daily Journal</h2>
+              <p className="journal-subtitle">
+                Record your daily activities, learnings, and experiences. The AI analyzes these to recommend the perfect career for you!
+              </p>
+            </div>
+            
+            {/* Illustration Space */}
+            <div className="journal-illustration-space">
+              <div className="illustration-placeholder">
+                <img 
+                  src="/illustrations/journal-meditation.svg"
+                  alt="Journal illustration"
+                  style={{ maxWidth: '100%', height: 'auto' }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
 
       {message && (
-        <div style={{
-          padding: '12px 16px',
-          marginBottom: '20px',
-          borderRadius: '4px',
-          backgroundColor: message.includes('✅') ? '#d4edda' : '#f8d7da',
-          color: message.includes('✅') ? '#155724' : '#721c24',
-          border: `1px solid ${message.includes('✅') ? '#c3e6cb' : '#f5c6cb'}`,
-        }}>
+        <div className={`message ${message.includes('✅') ? 'success' : 'error'}`}>
           {message}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ backgroundColor: '#f8f9fa', padding: '24px', borderRadius: '8px' }}>
+      <form onSubmit={handleSubmit} className="journal-form">
         {/* Helper Prompts */}
-        <div style={{ marginBottom: '20px', padding: '12px', background: '#e9ecef', borderRadius: '6px' }}>
-          <small style={{ fontWeight: 'bold', color: '#495057', display: 'block', marginBottom: '5px' }}>💡 Need inspiration? Try writing about:</small>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+        <div className="helper-prompts">
+          <small style={{ fontWeight: 'bold', color: 'var(--text-200)', display: 'block', marginBottom: '8px' }}>
+            <MdAutoAwesome style={{ display: 'inline', marginRight: '6px', fontSize: '16px' }} />
+            Need inspiration? Try writing about:
+          </small>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {['Working with data', 'Designing apps', 'Leading a team', 'Problem solving', 'Cybersecurity'].map(prompt => (
               <button 
                 type="button"
                 key={prompt}
                 onClick={() => setFormData({...formData, currentActivity: prompt})}
-                style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '15px', border: '1px solid #ced4da', cursor: 'pointer', background: 'white' }}
+                className="prompt-button"
               >
                 + {prompt}
               </button>
@@ -128,8 +143,11 @@ const JournalPage = () => {
         </div>
 
         {/* Activities */}
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>🎯 What did you do today?</label>
+        <div className="form-section">
+          <label className="form-label">
+            <FiZap style={{ display: 'inline', marginRight: '8px' }} />
+            What did you do today?
+          </label>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
             <input
               type="text"
@@ -142,54 +160,25 @@ const JournalPage = () => {
                   handleActivityAdd();
                 }
               }}
-              style={{
-                flex: 1,
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '14px',
-              }}
+              className="activity-input"
             />
             <button
               type="button"
               onClick={handleActivityAdd}
-              style={{
-                padding: '10px 16px',
-                backgroundColor: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
+              className="btn-add"
             >
               + Add
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <div className="activities-list">
             {formData.activities.map((activity, index) => (
-              <div
-                key={index}
-                style={{
-                  backgroundColor: '#e2e3e5',
-                  padding: '6px 12px',
-                  borderRadius: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontSize: '14px',
-                }}
-              >
+              <div key={index} className="activity-tag">
                 <span>{activity}</span>
                 <button
                   type="button"
                   onClick={() => handleActivityRemove(index)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: '#999',
-                  }}
+                  className="btn-remove"
                 >
                   ✕
                 </button>
@@ -199,51 +188,44 @@ const JournalPage = () => {
         </div>
 
         {/* Learnings */}
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>💡 What did you learn?</label>
+        <div className="form-section">
+          <label className="form-label">
+            <FiBookOpen style={{ display: 'inline', marginRight: '8px' }} />
+            What did you learn?
+          </label>
           <textarea
             name="learnings"
             placeholder="New skills, insights, concepts..."
             value={formData.learnings}
             onChange={handleInputChange}
             rows="3"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontFamily: 'inherit',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-            }}
+            className="form-textarea"
           />
         </div>
 
         {/* Challenges */}
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>⚡ What was challenging?</label>
+        <div className="form-section">
+          <label className="form-label">
+            <FiAlertCircle style={{ display: 'inline', marginRight: '8px' }} />
+            What was challenging?
+          </label>
           <textarea
             name="challenges"
             placeholder="Difficulties, what made you think, areas to improve..."
             value={formData.challenges}
             onChange={handleInputChange}
             rows="3"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontFamily: 'inherit',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-            }}
+            className="form-textarea"
           />
         </div>
 
         {/* Mood */}
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '12px' }}>😊 How was your mood?</label>
-          <div style={{ display: 'flex', gap: '16px' }}>
+        <div className="form-section">
+          <label className="form-label">
+            <FiSmile style={{ display: 'inline', marginRight: '8px' }} />
+            How was your mood?
+          </label>
+          <div className="mood-options">
             {[
               { value: 'very_happy', emoji: '😄', label: 'Very Happy' },
               { value: 'happy', emoji: '😊', label: 'Happy' },
@@ -251,7 +233,7 @@ const JournalPage = () => {
               { value: 'sad', emoji: '😔', label: 'Sad' },
               { value: 'very_sad', emoji: '😢', label: 'Very Sad' },
             ].map((mood) => (
-              <label key={mood.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <label key={mood.value} className="mood-option">
                 <input
                   type="radio"
                   name="mood"
@@ -259,66 +241,42 @@ const JournalPage = () => {
                   checked={formData.mood === mood.value}
                   onChange={handleInputChange}
                 />
-                <span style={{ fontSize: '20px' }}>{mood.emoji}</span>
+                <span className="mood-emoji">{mood.emoji}</span>
               </label>
             ))}
           </div>
         </div>
 
         {/* Notes */}
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>📌 Notes</label>
+        <div className="form-section">
+          <label className="form-label">
+            📌 Notes
+          </label>
           <textarea
             name="notes"
             placeholder="Any other thoughts or observations..."
             value={formData.notes}
             onChange={handleInputChange}
             rows="3"
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontFamily: 'inherit',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-            }}
+            className="form-textarea"
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '12px',
-            backgroundColor: loading ? '#ccc' : '#28a745',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: loading ? 'default' : 'pointer',
-          }}
-        >
-          {loading ? '⏳ Saving...' : '💾 Save Entry & Update Recommendations'}
+        <button type="submit" disabled={loading} className="btn-submit">
+          <FiSave style={{ display: 'inline', marginRight: '8px' }} />
+          {loading ? 'Saving...' : 'Save Entry & Update Recommendations'}
         </button>
       </form>
 
-      <div style={{
-        marginTop: '32px',
-        padding: '20px',
-        backgroundColor: '#e7f3ff',
-        borderRadius: '8px',
-        border: '1px solid #b3d9ff',
-      }}>
-        <h4 style={{ marginTop: 0 }}>💫 Tips for Better Recommendations:</h4>
-        <ul style={{ margin: '10px 0', paddingLeft: '20px' }}>
+      <div className="journal-tips">
+        <h4>💫 Tips for Better Recommendations:</h4>
+        <ul>
           <li><strong>Be honest:</strong> Record what you actually did</li>
           <li><strong>Be specific:</strong> Details help the AI understand you</li>
           <li><strong>Be consistent:</strong> Daily entries improve accuracy</li>
           <li><strong>Share challenges:</strong> Growth areas define your ideal career</li>
         </ul>
+      </div>
       </div>
     </div>
   );

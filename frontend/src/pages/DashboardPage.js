@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { FiTrendingUp, FiInfo, FiActivity, FiLoader } from "react-icons/fi";
+import { MdAutoAwesome } from "react-icons/md";
+import './DashboardPage.css';
 
 function DashboardPage() {
   const [analysis, setAnalysis] = useState(null);
@@ -29,86 +32,179 @@ function DashboardPage() {
     fetchData();
   }, []);
 
-  if (loading) return <div style={{ padding: "40px" }}>Loading Dashboard...</div>;
+  if (loading) {
+    return (
+      <div className="dashboard-page">
+        <div className="dashboard-container">
+          <div className="loading-container">
+            <div className="loading-spinner">
+              <FiLoader />
+            </div>
+            <p>Loading your Dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: "40px", fontFamily: "sans-serif", maxWidth: "1000px", margin: "0 auto" }}>
-      
-      {/* Header section */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" }}>
-        <h2>Dashboard</h2>
-      </div>
+    <div className="dashboard-page">
+      <div className="dashboard-container">
+        
+        {/* Header */}
+        <div className="dashboard-header">
+          <div>
+            <h2>
+              <FiTrendingUp />
+              Dashboard
+            </h2>
+            <p className="dashboard-subtitle">Your personalized career discovery hub</p>
+          </div>
+        </div>
 
-      {/* Welcome Banner */}
-      <div style={{ backgroundColor: "#e0f2fe", padding: "30px", borderRadius: "12px", marginBottom: "30px", border: "1px solid #bae6fd" }}>
-        <h3 style={{ margin: "0 0 10px 0", color: "#0369a1" }}>Welcome back! 🚀</h3>
-        <p style={{ margin: 0, color: "#0c4a6e" }}>
-          Your profile is <b>{analysis?.profile_completeness?.toFixed(0) || 0}%</b> complete. 
-          {analysis?.profile_completeness < 100 ? " Complete your profile to get more accurate career matches." : " You're all set for AI-powered discovery!"}
-        </p>
-      </div>
+        {/* Welcome Banner */}
+        <div className="welcome-banner">
+          <div className="welcome-content">
+            <h3>
+              <MdAutoAwesome />
+              Welcome back! 🚀
+            </h3>
+            <p>
+              Your profile is <b>{analysis?.profile_completeness?.toFixed(0) || 0}%</b> complete. 
+              {analysis?.profile_completeness < 100 
+                ? " Complete your profile to unlock more AI-powered career matches and personalized recommendations." 
+                : " You're all set for AI-powered discovery!"}
+            </p>
+          </div>
+          <div className="welcome-badge">
+            <span className="badge-number">{analysis?.profile_completeness?.toFixed(0) || 0}%</span>
+            <span className="badge-label">Profile Ready</span>
+          </div>
+        </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "20px" }}>
+        {/* Dashboard Grid */}
+        <div className="dashboard-grid">
         
         {/* Ikigai Scores Card */}
-        <div style={{ backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
-          <h4 style={{ marginTop: 0, color: "#2d3748", borderBottom: "2px solid #edf2f7", paddingBottom: "10px" }}>Ikigai Snapshot</h4>
-          <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "15px" }}>
-            {[
-              { label: "Passion", score: analysis?.passion_score, color: "#f687b3" },
-              { label: "Skills", score: analysis?.skills_score, color: "#4299e1" },
-              { label: "Values", score: analysis?.values_score, color: "#48bb78" },
-              { label: "Readiness", score: analysis?.market_readiness, color: "#ecc94b" }
-            ].map(item => (
-              <div key={item.label}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px" }}>
-                  <span style={{ fontSize: "14px", fontWeight: "600" }}>{item.label}</span>
-                  <span style={{ fontSize: "14px", fontWeight: "600" }}>{Math.round(item.score || 0)}%</span>
-                </div>
-                <div style={{ height: "8px", backgroundColor: "#edf2f7", borderRadius: "4px", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${item.score || 0}%`, backgroundColor: item.color, transition: "width 1s ease-in-out" }} />
+        <div className="dashboard-card">
+          <div className="card-header">
+            <h4>
+              <FiTrendingUp className="card-icon" />
+              Ikigai Snapshot
+            </h4>
+          </div>
+          <div className="card-body">
+            <div className="card-content">
+              <div className="card-illustration">
+                <div className="illustration-box">
+                  <MdAutoAwesome size={48} color="var(--primary-100)" opacity={0.3} />
                 </div>
               </div>
-            ))}
+              <div className="card-data">
+                {[
+                  { label: "Passion", key: "passion_score", emoji: "❤️", colorClass: "passion" },
+                  { label: "Skills", key: "skills_score", emoji: "⚙️", colorClass: "skills" },
+                  { label: "Values", key: "values_score", emoji: "🎯", colorClass: "values" },
+                  { label: "Readiness", key: "market_readiness", emoji: "🚀", colorClass: "readiness" }
+                ].map(item => (
+                  <div key={item.key} className="score-item">
+                    <div className="score-header">
+                      <span className="score-label">
+                        {item.emoji} {item.label}
+                      </span>
+                      <span className="score-percentage">{Math.round(analysis?.[item.key] || 0)}%</span>
+                    </div>
+                    <div className="score-bar">
+                      <div 
+                        className={`score-fill ${item.colorClass}`}
+                        style={{ width: `${analysis?.[item.key] || 0}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* AI Career Insight Card */}
-        <div style={{ backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
-          <h4 style={{ marginTop: 0, color: "#2d3748", borderBottom: "2px solid #edf2f7", paddingBottom: "10px" }}>AI Insight</h4>
-          <div style={{ marginTop: "15px" }}>
-            {recentEntries.length > 0 ? (
-              <p style={{ color: "#4a5568", lineHeight: "1.6" }}>
-                Based on your recent activities like <b>{recentEntries[0].activities.slice(0, 2).join(", ")}</b>, 
-                your skills score has reached <b>{analysis?.skills_score?.toFixed(0)}%</b>. 
-                Keep exploring <b>{analysis?.passion_keywords?.slice(0, 2).join(" & ")}</b> to boost your passion alignment!
-              </p>
-            ) : (
-              <p style={{ color: "#718096" }}>Start journaling or chatting with the AI coach to generate your first set of career insights.</p>
-            )}
+        <div className="dashboard-card">
+          <div className="card-header">
+            <h4>
+              <FiInfo className="card-icon" />
+              AI Insight
+            </h4>
+          </div>
+          <div className="card-body">
+            <div className="card-content">
+              <div className="card-illustration">
+                <div className="illustration-box">
+                  <MdAutoAwesome size={48} color="var(--primary-100)" opacity={0.3} />
+                </div>
+              </div>
+              <div className="card-data">
+                {recentEntries.length > 0 ? (
+                  <div className="ai-insight-highlight">
+                    <p className="ai-insight-text">
+                      Based on your recent activities like <b>{recentEntries[0].activities.slice(0, 2).join(", ")}</b>, 
+                      your skills score has reached <b>{analysis?.skills_score?.toFixed(0)}%</b>. 
+                      Keep exploring <b>{analysis?.passion_keywords?.slice(0, 2).join(" & ")}</b> to boost your passion alignment!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="empty-state">
+                    <p className="empty-state-text">
+                      Start journaling or chatting with the AI coach to generate your first set of career insights.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Recent Journaling Activity */}
-        <div style={{ backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
-          <h4 style={{ marginTop: 0, color: "#2d3748", borderBottom: "2px solid #edf2f7", paddingBottom: "10px" }}>Latest Activity</h4>
-          <div style={{ marginTop: "15px" }}>
-            {recentEntries.length > 0 ? (
-              <ul style={{ listStyle: "none", padding: 0 }}>
-                {recentEntries.map((entry, i) => (
-                  <li key={i} style={{ padding: "10px 0", borderBottom: i === recentEntries.length - 1 ? "none" : "1px solid #f7fafc", fontSize: "14px" }}>
-                    <span style={{ color: "#718096" }}>{new Date(entry.date).toLocaleDateString()}:</span> {entry.activities.slice(0, 2).join(", ")}...
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p style={{ color: "#718096" }}>No recent activity found.</p>
-            )}
+        <div className="dashboard-card">
+          <div className="card-header">
+            <h4>
+              <FiActivity className="card-icon" />
+              Latest Activity
+            </h4>
+          </div>
+          <div className="card-body">
+            <div className="card-content">
+              <div className="card-illustration">
+                <div className="illustration-box">
+                  <MdAutoAwesome size={48} color="var(--primary-100)" opacity={0.3} />
+                </div>
+              </div>
+              <div className="card-data">
+                {recentEntries.length > 0 ? (
+                  <ul className="activity-list">
+                    {recentEntries.map((entry, i) => (
+                      <li key={i} className="activity-item">
+                        <span className="activity-date">
+                          {new Date(entry.date).toLocaleDateString()}
+                        </span>
+                        <span className="activity-text">
+                          {entry.activities.slice(0, 2).join(", ")}...
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="empty-state">
+                    <p className="empty-state-text">No recent activity found.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
       </div>
 
+      </div>
     </div>
   );
 }
