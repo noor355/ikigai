@@ -1,7 +1,7 @@
 /* Recommendations Page Styles */
 .recommendations-page {
   padding: 40px 20px;
-  background: linear-gradient(135deg, var(--primary-100) 0%, var(--primary-200) 100%);
+  background: #ecd7c1;
   min-height: 100vh;
 }
 

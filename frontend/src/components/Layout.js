@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import "./Layout.css";
 
 function Layout({ setToken }) {
   const location = useLocation();
@@ -23,28 +24,18 @@ function Layout({ setToken }) {
   ];
 
   return (
-    <div style={{ display: "flex", height: "100vh", fontFamily: "sans-serif", backgroundColor: "#f4f7f6" }}>
+    <div className="layout-container">
       
       {/* Sidebar Navigation */}
-      <div style={{ width: "250px", backgroundColor: "#1e293b", color: "white", display: "flex", flexDirection: "column", padding: "20px 0" }}>
-        <h2 style={{ textAlign: "center", borderBottom: "1px solid #334155", paddingBottom: "20px", marginBottom: "20px" }}>Ikigai</h2>
+      <div className="layout-sidebar">
+        <h2>Ikigai</h2>
         
-        <nav style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+        <nav className="layout-nav">
           {menuItems.map((item) => (
             <Link 
               key={item.name} 
               to={item.path} 
-              style={{ 
-                textDecoration: "none", 
-                color: isActive(item.path) ? "#38bdf8" : "#cbd5e1", 
-                backgroundColor: isActive(item.path) ? "#0f172a" : "transparent",
-                padding: "15px 20px", 
-                fontSize: "16px",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                transition: "background 0.2s"
-              }}
+              className={`layout-nav-link ${isActive(item.path) ? 'active' : ''}`}
             >
               <span>{item.icon}</span> {item.name}
             </Link>
@@ -53,16 +44,15 @@ function Layout({ setToken }) {
 
         <button 
           onClick={handleLogout} 
-          style={{ margin: "20px", padding: "10px", backgroundColor: "#ef4444", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}
+          className="layout-logout-btn"
         >
           Logout
         </button>
       </div>
 
-      {/* Main Content Area (This is where the pages load!) */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
-        <div style={{ backgroundColor: "white", borderRadius: "12px", minHeight: "90%", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
-          {/* Outlet is the magic React Router component that swaps the pages out */}
+      {/* Main Content Area */}
+      <div className="layout-main">
+        <div className="layout-main-content">
           <Outlet /> 
         </div>
       </div>

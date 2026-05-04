@@ -3,7 +3,7 @@ import axios from 'axios';
 import { FiEdit3, FiBookOpen, FiAlertCircle, FiSmile, FiSave, FiZap } from 'react-icons/fi';
 import { MdAutoAwesome } from 'react-icons/md';
 import './JournalPage.css';
-
+import journalImage from '../assets/illustrations/journalPage.png';
 const JournalPage = () => {
   const [formData, setFormData] = useState({
     activities: [],
@@ -106,7 +106,7 @@ const JournalPage = () => {
             <div className="journal-illustration-space">
               <div className="illustration-placeholder">
                 <img 
-                  src="/illustrations/journal-meditation.svg"
+                  src={journalImage}
                   alt="Journal illustration"
                   style={{ maxWidth: '100%', height: 'auto' }}
                 />

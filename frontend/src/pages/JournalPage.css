@@ -1,7 +1,7 @@
 /* Journal Page Styles */
 .journal-page {
   padding: 40px 20px;
-  background: linear-gradient(135deg, var(--primary-100) 0%, var(--primary-200) 100%);
+  background: #ecd7c1;
   min-height: 100vh;
 }
 
@@ -17,64 +17,83 @@
 /* Header Section with Illustration */
 .journal-header {
   margin-bottom: 32px;
-  padding-bottom: 24px;
-  border-bottom: 2px solid var(--bg-100);
+  background: white;
+  border-radius: 16px;
+  padding: 60px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  margin: 0 -40px 32px -40px;
 }
 
 .journal-header-content {
-  display: flex;
-  gap: 32px;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
 }
 
 .journal-header-text h2 {
   color: var(--text-100);
-  margin: 0 0 10px 0;
-  font-size: 32px;
+  margin: 0 0 16px 0;
+  font-size: 48px;
   display: flex;
   align-items: center;
+  font-weight: 700;
 }
 
 .journal-subtitle {
   color: var(--text-200);
-  font-size: 15px;
+  font-size: 16px;
   margin: 0;
   line-height: 1.6;
-  max-width: 500px;
 }
 
 /* SVG Illustration Space */
 .journal-illustration-space {
-  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
 }
 
 .illustration-placeholder {
-  width: 140px;
-  height: 140px;
-  background: linear-gradient(135deg, var(--bg-100) 0%, var(--bg-200) 100%);
-  border: 2px dashed var(--bg-300);
-  border-radius: 12px;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  padding: 16px;
-  text-align: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: default;
+  transition: none;
 }
 
 .illustration-placeholder:hover {
-  border-color: var(--primary-100);
-  background: linear-gradient(135deg, var(--bg-100) 0%, #ffffff 100%);
-  transform: translateY(-2px);
+  border-color: transparent;
+  background: transparent;
+  transform: none;
 }
 
 .illustration-placeholder img {
   max-width: 100%;
-  max-height: 100%;
+  max-height: 400px;
   object-fit: contain;
+  height: auto;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .journal-header {
+    padding: 32px;
+    margin: 0 -20px 32px -20px;
+  }
+
+  .journal-header-content {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .journal-header-text h2 {
+    font-size: 32px;
+  }
 }
 
 /* Helper Prompts */

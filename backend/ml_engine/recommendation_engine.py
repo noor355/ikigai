@@ -18,15 +18,18 @@ class IkigaiRecommendationEngine:
         self.values_weight = 0.20
         self.market_weight = 0.15
         
-        # Enable NLP processor
+        # Initialize NLP processor on startup
+        print("[ENGINE] Initializing NLP processor...")
         self.nlp_enabled = True
         try:
             self.nlp_processor = NLPProcessor()
-            # Initialize Trainer for TF-IDF Similarity (from notebook)
+            # Initialize Trainer for TF-IDF Similarity
+            print("[ENGINE] Initializing model trainer...")
             self.trainer = ModelTrainer()
             self.trainer.train_from_career_database(self.careers)
+            print("[ENGINE] Model trainer initialized")
         except Exception as e:
-            print(f"Failed to initialize NLP Processor: {e}")
+            print(f"[ENGINE] Failed to initialize NLP Processor: {e}")
             self.nlp_enabled = False
             self.nlp_processor = None
             self.trainer = None

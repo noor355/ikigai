@@ -14,42 +14,56 @@ class NLPProcessor:
     """Main NLP processor using HuggingFace Transformers"""
     
     def __init__(self):
-        """Initialize NLP models - using smaller/faster models for production"""
-        # Sentiment analysis
+        """Initialize NLP models - EAGER LOADING for production/demo"""
+        print("[NLP] Loading sentiment analysis model...")
         self.sentiment_pipeline = pipeline(
             "sentiment-analysis",
             model="distilbert-base-uncased-finetuned-sst-2-english"
         )
+        print("[NLP] Sentiment model loaded")
         
-        # Named Entity Recognition - Switching to a more reliable model name
+        print("[NLP] Loading embedding model...")
+        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        print("[NLP] Embedding model loaded")
+        
+        # Named Entity Recognition
         try:
+            print("[NLP] Loading NER model...")
             self.ner_pipeline = pipeline(
                 "ner",
                 model="dbmdz/bert-large-cased-finetuned-conll03-english",
                 aggregation_strategy="simple"
             )
-        except Exception:
+            print("[NLP] NER model loaded")
+        except Exception as e:
+            print(f"[NLP] NER Model failed to load: {e}")
             self.ner_pipeline = None
-            print("NER Model failed to load, using fallback keyword extraction")
         
-        # Summarization (for longer texts) - Fixed fallback for specific environments
+        # Summarization
         try:
+            print("[NLP] Loading summarization model...")
             self.summarizer = pipeline(
                 "summarization",
                 model="facebook/bart-large-cnn"
             )
-        except Exception:
-            print("Summarization pipeline unavailable, using fallback logic")
+            print("[NLP] Summarization model loaded")
+        except Exception as e:
+            print(f"[NLP] Summarization model failed to load: {e}")
             self.summarizer = None
         
-        # Semantic embeddings for similarity
-        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        # Zero-shot classification
+        try:
+            print("[NLP] Loading zero-shot classifier...")
+            self.classifier = pipeline(
+                "zero-shot-classification",
+                model="facebook/bart-large-mnli"
+            )
+            print("[NLP] Zero-shot classifier loaded")
+        except Exception as e:
+            print(f"[NLP] Classifier failed to load: {e}")
+            self.classifier = None
         
-        # Zero-shot classification for keyword extraction
-        self.classifier = pipeline(
-            "zero-shot-classification",
-            model="facebook/bart-large-mnli"
-        )
+        print("[NLP] All models loaded successfully!")
     
     # ============ SENTIMENT ANALYSIS ============
     def analyze_sentiment(self, text: str) -> Dict:
