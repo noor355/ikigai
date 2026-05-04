@@ -317,6 +317,14 @@ class NLPProcessor:
         if not text or len(text.strip()) < 100:
             return text  # Too short to summarize
         
+        # Fallback if summarizer model is missing
+        if self.summarizer is None:
+            # Simple extractive summary: first 2 sentences
+            sentences = [s.strip() + "." for s in text.split(".") if len(s.strip()) > 5]
+            if len(sentences) > 2:
+                return " ".join(sentences[:2])
+            return text
+        
         # Truncate very long texts (summarizer has limits)
         text = text[:1024]
         
