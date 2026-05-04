@@ -6,7 +6,7 @@ Handles sentiment analysis, keyword extraction, NER, semantic similarity, and su
 from transformers import pipeline
 from sentence_transformers import SentenceTransformer, util
 import torch
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 import numpy as np
 
 
@@ -15,12 +15,25 @@ class NLPProcessor:
     
     def __init__(self):
         """Initialize NLP models - EAGER LOADING for production/demo"""
+        # Type hints for Pylance
+        self.sentiment_pipeline: Any
+        self.embedding_model: SentenceTransformer
+        self.ner_pipeline: Any
+        self.summarizer: Any
+        self.classifier: Any
+        self.generator: Any
+        self.cache: Dict[str, Any] = {}
+
         print("[NLP] Loading sentiment analysis model...")
-        self.sentiment_pipeline = pipeline(
-            "sentiment-analysis",
-            model="distilbert-base-uncased-finetuned-sst-2-english"
-        )
-        print("[NLP] Sentiment model loaded")
+        try:
+            self.sentiment_pipeline = pipeline(
+                "sentiment-analysis",  # type: ignore
+                model="distilbert-base-uncased-finetuned-sst-2-english"
+            )
+            print("[NLP] Sentiment model loaded")
+        except Exception as e:
+            print(f"[NLP] Sentiment model failed: {e}")
+            self.sentiment_pipeline = None
         
         print("[NLP] Loading embedding model...")
         self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -30,7 +43,7 @@ class NLPProcessor:
         try:
             print("[NLP] Loading NER model...")
             self.ner_pipeline = pipeline(
-                "ner",
+                "ner",  # type: ignore
                 model="dbmdz/bert-large-cased-finetuned-conll03-english",
                 aggregation_strategy="simple"
             )
@@ -39,23 +52,11 @@ class NLPProcessor:
             print(f"[NLP] NER Model failed to load: {e}")
             self.ner_pipeline = None
         
-        # Summarization
-        try:
-            print("[NLP] Loading summarization model...")
-            self.summarizer = pipeline(
-                "summarization",
-                model="facebook/bart-large-cnn"
-            )
-            print("[NLP] Summarization model loaded")
-        except Exception as e:
-            print(f"[NLP] Summarization model failed to load: {e}")
-            self.summarizer = None
-        
         # Zero-shot classification
         try:
             print("[NLP] Loading zero-shot classifier...")
             self.classifier = pipeline(
-                "zero-shot-classification",
+                "zero-shot-classification",  # type: ignore
                 model="facebook/bart-large-mnli"
             )
             print("[NLP] Zero-shot classifier loaded")
@@ -63,8 +64,81 @@ class NLPProcessor:
             print(f"[NLP] Classifier failed to load: {e}")
             self.classifier = None
         
+        # Text Generation for Chatbot
+        try:
+            print("[NLP] Loading text generation model (GPT-2)...")
+            self.generator = pipeline(
+                "text-generation",  # type: ignore
+                model="gpt2"
+            )
+            print("[NLP] GPT-2 model loaded")
+        except Exception as e:
+            print(f"[NLP] Generator failed to load: {e}")
+            self.generator = None
+        
+        # Load Summarizer specifically for long journal entries
+        try:
+            print("[NLP] Loading summarization model (DistilBART)...")
+            self.summarizer = pipeline(
+                "summarization",  # type: ignore
+                model="sshleifer/distilbart-cnn-12-6"
+            )
+            print("[NLP] Summarization model loaded")
+        except Exception as e:
+            print(f"[NLP] Summarization failed to load: {e}")
+            self.summarizer = None
+        
         print("[NLP] All models loaded successfully!")
     
+    # ============ CACHING LOGIC ============
+    def get_cached_embedding(self, text: str):
+        if text in self.cache:
+            return self.cache[text]
+        embedding = self.embedding_model.encode(text, convert_to_tensor=True)
+        # Limit cache size to 1000 items
+        if len(self.cache) < 1000:
+            self.cache[text] = embedding
+        return embedding
+
+    # ============ TEXT GENERATION ============
+    def generate_coach_response(self, user_message: str, context: str = "") -> str:
+        """
+        Generate a coaching response using NLP models.
+        """
+        if not self.generator:
+            return "I'm currently in rule-based mode as my brain is still loading. How can I help?"
+
+        prompt = f"System: You are an Ikigai Career Coach. Your goal is to be curious and help the user find their passion. {context}\nUser: {user_message}\nCoach:"
+        
+        try:
+            # Using GPT-2 for local generation
+            responses = self.generator(
+                prompt, 
+                max_new_tokens=40,
+                num_return_sequences=1,
+                truncation=True,
+                do_sample=True,
+                temperature=0.7,
+                top_p=0.9,
+                pad_token_id=50256
+            )
+            full_text = responses[0]['generated_text']
+            # Extract only the Coach's reply
+            if "Coach:" in full_text:
+                reply = full_text.split("Coach:")[-1].strip()
+            else:
+                reply = full_text[len(prompt):].strip()
+            
+            # Clean up the reply (take only first sentence or two if it rambles)
+            sentences = reply.split(".")
+            if len(sentences) > 2:
+                reply = ". ".join(sentences[:2]) + "."
+                
+            return reply
+        except Exception as e:
+            print(f"Error in generation: {e}")
+            return "That's an interesting point. Let's explore how that fits into your Ikigai."
+
     # ============ SENTIMENT ANALYSIS ============
     def analyze_sentiment(self, text: str) -> Dict:
         """
@@ -184,21 +258,14 @@ class NLPProcessor:
     # ============ SEMANTIC SIMILARITY ============
     def calculate_similarity(self, text1: str, text2: str) -> float:
         """
-        Calculate semantic similarity between two texts (0-1)
-        
-        Args:
-            text1: First text
-            text2: Second text
-            
-        Returns:
-            float: Similarity score
+        Calculate semantic similarity between two texts (0-1) with caching
         """
         if not text1 or not text2:
             return 0.0
         
         try:
-            embeddings1 = self.embedding_model.encode(text1, convert_to_tensor=True)
-            embeddings2 = self.embedding_model.encode(text2, convert_to_tensor=True)
+            embeddings1 = self.get_cached_embedding(text1)
+            embeddings2 = self.get_cached_embedding(text2)
             
             similarity = util.pytorch_cos_sim(embeddings1, embeddings2)
             return float(similarity[0][0])

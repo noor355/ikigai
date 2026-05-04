@@ -4,14 +4,12 @@ from typing import Optional
 
 class Settings(BaseSettings):
     # Database (Supabase PostgreSQL)
-    # Get the connection string from: https://supabase.com -> Project Settings -> Database
-    # Use Connection Pooling with Session mode for FastAPI
-    DATABASE_URL: str = "postgresql://postgres:[password]@[project-id].pooler.supabase.com:6543/postgres"
+    DATABASE_URL: str = "postgresql://postgres.vlocrlpvodgwgriqqpsj:ikigaiproject123@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres"
     
     # JWT
-    SECRET_KEY: str = "your-secret-key-here-change-in-production"
+    SECRET_KEY: str = "your-super-secret-key-change-this-in-production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     
     # API
     API_V1_STR: str = "/api/v1"
@@ -28,6 +26,11 @@ class Settings(BaseSettings):
     
     # ML Settings
     MODEL_PATH: str = "ml_engine/models/"
+
+    class Config:
+        env_file = ".env"
+        extra = "allow"
+
     
     class Config:
         env_file = ".env"

@@ -50,7 +50,7 @@ const JournalPage = () => {
       const token = localStorage.getItem('token');
       
       const response = await axios.post(
-        'http://localhost:8000/api/v1/recommendations/save-daily-entry',
+        'http://localhost:8000/api/v1/daily-entries/',
         {
           activities: formData.activities.length > 0 ? formData.activities : ['Journal entry'],
           learnings: formData.learnings || null,
