@@ -74,12 +74,31 @@ async def chat_with_coach(
     # 2. Use the real NLP model for general conversation
     else:
         try:
-            # This uses the GPT-2 model we just added to nlp_processor.py
-            nlp_reply = engine.nlp_processor.generate_coach_response(chat_input.message, context=context_str)
-            reply = nlp_reply
+            # Check for specialized career intent first
+            user_msg_lower = chat_input.message.lower()
+            if "doctor" in user_msg_lower:
+                reply = "Becoming a doctor is a dedicated path which perfectly aligns with 'What the world needs' and 'What you can be paid for'. Are you more interested in general medicine, or does a specific field like surgery or research excite you?"
+            elif "lawyer" in user_msg_lower:
+                reply = "The legal profession requires sharp analytical skills and a passion for justice. Do you enjoy the research and debate aspects, or are you more interested in helping people navigate complex systems?"
+            elif "teacher" in user_msg_lower or "education" in user_msg_lower:
+                reply = "Education is fundamental to society's progress. What age group would you be most passionate about inspiring, and what's the one thing you wish someone had taught you earlier?"
+            else:
+                # This uses the GPT-2 model we just added to nlp_processor.py
+                nlp_reply = engine.nlp_processor.generate_coach_response(chat_input.message, context=context_str)
+                
+                # If GPT-2 produces very short or repetitive garbage, use a better fallback
+                if len(nlp_reply) < 10 or nlp_reply.lower() in [chat_input.message.lower(), "i want to", "k, i want to"]:
+                    fallbacks = [
+                        f"That's a fascinating interest! How does {chat_input.message} make you feel about your future?",
+                        "I'm curious to hear more about that. What's the biggest challenge you foresee in pursuing that path?",
+                        "That sounds like it could be a key part of your Ikigai. What's the first step you'd take to explore this further?"
+                    ]
+                    reply = random.choice(fallbacks)
+                else:
+                    reply = nlp_reply
         except Exception as e:
             print(f"[CHAT ERROR] NLP Generation failed: {e}")
-            reply = "I appreciate you sharing that. Tell me more about how that fits into your ideal day-to-day life."
+            reply = f"I hear you. Tell me more about how {chat_input.message} fits into your vision of a perfect career."
 
     # In a real implementation, we would store this in the database
     return ChatResponse(

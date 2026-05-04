@@ -64,17 +64,21 @@ class NLPProcessor:
             print(f"[NLP] Classifier failed to load: {e}")
             self.classifier = None
         
-        # Text Generation for Chatbot
+        # Text Generation for Chatbot - Using DialoGPT (Pre-trained for conversation)
         try:
-            print("[NLP] Loading text generation model (GPT-2)...")
+            print("[NLP] Loading DialoGPT-medium for better chatting...")
             self.generator = pipeline(
                 "text-generation",  # type: ignore
-                model="gpt2"
+                model="microsoft/DialoGPT-medium",
+                device=-1  # Force CPU for stability, change to 0 for GPU
             )
-            print("[NLP] GPT-2 model loaded")
+            print("[NLP] DialoGPT loaded successfully")
         except Exception as e:
-            print(f"[NLP] Generator failed to load: {e}")
-            self.generator = None
+            print(f"[NLP] DialoGPT failed: {e}. Falling back to GPT2...")
+            try:
+                self.generator = pipeline("text-generation", model="gpt2")
+            except:
+                self.generator = None
         
         # Load Summarizer specifically for long journal entries
         try:
@@ -108,36 +112,40 @@ class NLPProcessor:
         if not self.generator:
             return "I'm currently in rule-based mode as my brain is still loading. How can I help?"
 
-        prompt = f"System: You are an Ikigai Career Coach. Your goal is to be curious and help the user find their passion. {context}\nUser: {user_message}\nCoach:"
+        user_message_lower = user_message.lower()
         
+        # Enhanced keyword responses for better domain knowledge
+        if "doctor" in user_message_lower:
+            return "Medicine is a noble path! It strongly hits the 'What the world needs' part of Ikigai. What draws you to being a doctor? Is it the science, the helping others, or the challenge?"
+        
+        if "engineer" in user_message_lower:
+            return "Engineering is all about problem-solving. Whether it's software or structural, it requires a unique mindset. Do you enjoy the process of building systems from scratch?"
+
+        if "creative" in user_message_lower or "art" in user_message_lower:
+            return "Creativity is a powerful engine for Ikigai. How do you feel when you're in 'the flow' of creating something new? Could you see yourself doing that every day?"
+
+        # Fallback to Pre-trained Chatting System (DialoGPT)
         try:
-            # Using GPT-2 for local generation
+            # DialoGPT handles conversation better than raw GPT-2
             responses = self.generator(
-                prompt, 
-                max_new_tokens=40,
+                user_message,
+                max_new_tokens=50,
                 num_return_sequences=1,
-                truncation=True,
+                no_repeat_ngram_size=3,
                 do_sample=True,
                 temperature=0.7,
                 top_p=0.9,
                 pad_token_id=50256
             )
-            full_text = responses[0]['generated_text']
-            # Extract only the Coach's reply
-            if "Coach:" in full_text:
-                reply = full_text.split("Coach:")[-1].strip()
-            else:
-                reply = full_text[len(prompt):].strip()
+            reply = responses[0]['generated_text'].replace(user_message, "").strip()
             
-            # Clean up the reply (take only first sentence or two if it rambles)
-            sentences = reply.split(".")
-            if len(sentences) > 2:
-                reply = ". ".join(sentences[:2]) + "."
+            if not reply or len(reply) < 5:
+                return "That's interesting! Tell me more about why that's important to you."
                 
             return reply
         except Exception as e:
             print(f"Error in generation: {e}")
-            return "That's an interesting point. Let's explore how that fits into your Ikigai."
+            return "I'm curious to hear more about that. How does that fit into your ideal life?"
 
     # ============ SENTIMENT ANALYSIS ============
     def analyze_sentiment(self, text: str) -> Dict:

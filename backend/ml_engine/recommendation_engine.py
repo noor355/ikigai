@@ -58,73 +58,90 @@ class IkigaiRecommendationEngine:
     
     def _score_passion(self, user_profile, daily_entries) -> float:
         """Calculate passion score 0-100"""
-        score = 50
+        score = 0
         
+        has_data = False
         if hasattr(user_profile, 'passion_areas') and user_profile.passion_areas:
-            score += 20
+            score += 40
+            has_data = True
         if hasattr(user_profile, 'interests') and user_profile.interests:
-            score += 15
+            score += 30
+            has_data = True
         
         # Analyze daily entries using NLP if enabled
         if daily_entries:
+            has_data = True
             if self.nlp_enabled and self.nlp_processor:
                 # Combine last 5 entries for a sentiment snapshot
                 recent_texts = [e.notes for e in daily_entries[-5:] if hasattr(e, 'notes') and e.notes]
                 if recent_texts:
                     sentiments = [self.nlp_processor.analyze_sentiment(text) for text in recent_texts]
                     positive_count = sum(1 for s in sentiments if s.get('sentiment_type') == 'positive')
-                    score += (positive_count / len(recent_texts)) * 15
+                    score += (positive_count / len(recent_texts)) * 30
             else:
                 # Fallback to categorical mood field
                 positive_moods = sum(1 for e in daily_entries[-30:] 
                                     if hasattr(e, 'mood') and e.mood in ['happy', 'very_happy', 'excited'])
                 if len(daily_entries) > 0:
-                    score += (positive_moods / len(daily_entries[-30:])) * 15
+                    score += (positive_moods / len(daily_entries[-30:])) * 30
         
-        return min(100, score)
-    
+        return min(100, score) if has_data else 0.0
+
     def _score_skills(self, user_profile, daily_entries) -> float:
         """Calculate skills score 0-100"""
-        score = 50
+        score = 0
+        has_data = False
         
         if hasattr(user_profile, 'skills') and user_profile.skills:
             skill_count = len(user_profile.skills) if isinstance(user_profile.skills, list) else 0
-            score += min(skill_count * 5, 25)
+            if skill_count > 0:
+                score += min(skill_count * 10, 60)
+                has_data = True
         
-        if hasattr(user_profile, 'work_experience_years'):
+        if hasattr(user_profile, 'work_experience_years') and user_profile.work_experience_years:
             years = user_profile.work_experience_years
-            score += min(years * 2, 20)
+            if years > 0:
+                score += min(years * 5, 40)
+                has_data = True
         
-        return min(100, score)
-    
+        return min(100, score) if has_data else 0.0
+
     def _score_values(self, user_profile, daily_entries) -> float:
         """Calculate values alignment score 0-100"""
-        score = 50
+        score = 0
+        has_data = False
         
         if hasattr(user_profile, 'values') and user_profile.values:
             value_count = len(user_profile.values) if isinstance(user_profile.values, list) else 0
-            score += min(value_count * 5, 25)
+            if value_count > 0:
+                score += min(value_count * 10, 100)
+                has_data = True
         
-        return min(100, score)
-    
+        return min(100, score) if has_data else 0.0
+
     def _score_market_readiness(self, user_profile) -> float:
         """Calculate market readiness score 0-100"""
-        score = 50
+        score = 0
+        has_data = False
         
         education_level = getattr(user_profile, 'education_level', None) or ''
         education = education_level.lower() if education_level else ''
         
-        if 'phd' in education:
-            score += 20
-        elif 'master' in education:
-            score += 15
-        elif 'bachelor' in education:
-            score += 10
+        if education:
+            has_data = True
+            if 'phd' in education:
+                score += 60
+            elif 'master' in education:
+                score += 40
+            elif 'bachelor' in education:
+                score += 20
         
         years = getattr(user_profile, 'work_experience_years', 0) or 0
-        score += min(years * 3, 20)
+        if years > 0:
+            has_data = True
+            score += min(years * 10, 40)
         
-        return min(100, score)
+        return min(100, score) if has_data else 0.0
     
     def _extract_keywords(self, user_profile, attr_name) -> List[str]:
         """Extract keywords from user profile"""
