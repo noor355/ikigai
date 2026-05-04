@@ -36,7 +36,7 @@
   font-size: 16px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   transition: all 0.2s ease;
   cursor: pointer;
   border-left: 3px solid transparent;
@@ -54,8 +54,9 @@
   font-weight: 500;
 }
 
-.layout-nav-link span {
-  font-size: 20px;
+.layout-nav-link svg {
+  color: currentColor;
+  flex-shrink: 0;
 }
 
 .layout-logout-btn {
@@ -69,6 +70,10 @@
   font-weight: bold;
   font-size: 14px;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .layout-logout-btn:hover {
