@@ -26,7 +26,13 @@ class IkigaiRecommendationEngine:
             # Initialize Trainer for TF-IDF Similarity
             print("[ENGINE] Initializing model trainer...")
             self.trainer = ModelTrainer()
-            self.trainer.train_from_career_database(self.careers)
+            # Try to load existing model, otherwise train and save
+            if not self.trainer.load_model():
+                print("[ENGINE] No pre-trained model found, training from database...")
+                self.trainer.train_from_career_database(self.careers)
+                self.trainer.save_model()
+            else:
+                print("[ENGINE] Pre-trained TF-IDF model loaded")
             print("[ENGINE] Model trainer initialized")
         except Exception as e:
             print(f"[ENGINE] Failed to initialize NLP Processor: {e}")

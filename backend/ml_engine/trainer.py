@@ -106,8 +106,12 @@ class ModelTrainer:
 
     def save_model(self, path="ml_engine/models/tfidf_model.pkl"):
         """Saves the trained vectorizer and matrix"""
-        # Ensure path is relative to backend
-        full_path = os.path.join(os.getcwd(), path)
+        # Check if running from backend folder or root
+        if os.path.basename(os.getcwd()) == 'backend':
+            full_path = path
+        else:
+            full_path = os.path.join("backend", path)
+            
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         with open(full_path, 'wb') as f:
             pickle.dump({
@@ -116,6 +120,29 @@ class ModelTrainer:
                 "titles": self.career_titles
             }, f)
         print(f"Model saved to {full_path}")
+
+    def load_model(self, path="ml_engine/models/tfidf_model.pkl"):
+        """Loads a saved model if it exists"""
+        if os.path.basename(os.getcwd()) == 'backend':
+            full_path = path
+        else:
+            full_path = os.path.join("backend", path)
+            
+        if not os.path.exists(full_path):
+            print(f"No model found at {full_path}")
+            return False
+            
+        try:
+            with open(full_path, 'rb') as f:
+                data = pickle.load(f)
+                self.vectorizer = data["vectorizer"]
+                self.tfidf_matrix = data["matrix"]
+                self.career_titles = data["titles"]
+            print(f"Model loaded from {full_path}")
+            return True
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            return False
 
     def train_from_csv(self, csv_path: str):
         """

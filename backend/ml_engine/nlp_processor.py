@@ -8,10 +8,12 @@ from sentence_transformers import SentenceTransformer, util
 import torch
 from typing import List, Dict, Tuple, Any
 import numpy as np
+import google.generativeai as genai
+from config import settings
 
 
 class NLPProcessor:
-    """Main NLP processor using HuggingFace Transformers"""
+    """Main NLP processor using HuggingFace Transformers with Gemini for core chat"""
     
     def __init__(self):
         """Initialize NLP models - EAGER LOADING for production/demo"""
@@ -22,7 +24,18 @@ class NLPProcessor:
         self.summarizer: Any
         self.classifier: Any
         self.generator: Any
+        self.gemini_model: Any = None
         self.cache: Dict[str, Any] = {}
+
+        # Initialize Gemini if API key is present
+        if settings.GEMINI_API_KEY:
+            print("[NLP] Initializing Gemini API...")
+            try:
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+                print("[NLP] Gemini API initialized successfully")
+            except Exception as e:
+                print(f"[NLP] Gemini initialization failed: {e}")
 
         print("[NLP] Loading sentiment analysis model...")
         try:
@@ -107,8 +120,30 @@ class NLPProcessor:
     # ============ TEXT GENERATION ============
     def generate_coach_response(self, user_message: str, context: str = "") -> str:
         """
-        Generate a coaching response using NLP models.
+        Generate a coaching response using Gemini AI or fallback NLP models.
         """
+        # 1. Try Gemini API first (much higher quality)
+        if self.gemini_model:
+            try:
+                # Prepare a professional coaching prompt
+                system_prompt = (
+                    "You are an empathetic, insightful Ikigai Career Coach. "
+                    "Help the user find their purpose by exploring: "
+                    "1. What they love (Passion) "
+                    "2. What they are good at (Mission) "
+                    "3. What the world needs (Vocation) "
+                    "4. What they can be paid for (Profession). "
+                    "Keep responses concise, conversational, and encouraging. Use the provided context about the user's profile and activities to make your advice highly personal. Avoid repeating the user's input back to them."
+                )
+                full_prompt = f"{system_prompt}\n\nContext: {context}\nUser: {user_message}\nCoach:"
+                
+                response = self.gemini_model.generate_content(full_prompt)
+                if response and response.text:
+                    return response.text.strip()
+            except Exception as e:
+                print(f"[NLP] Gemini generation failed, falling back: {e}")
+
+        # 2. Local Fallback logic starts here
         if not self.generator:
             return "I'm currently in rule-based mode as my brain is still loading. How can I help?"
 

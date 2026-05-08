@@ -27,11 +27,9 @@ class Settings(BaseSettings):
     # ML Settings
     MODEL_PATH: str = "ml_engine/models/"
 
-    class Config:
-        env_file = ".env"
-        extra = "allow"
+    # Gemini API
+    GEMINI_API_KEY: Optional[str] = None
 
-    
     class Config:
         env_file = ".env"
         case_sensitive = True

@@ -57,12 +57,18 @@ async def chat_with_coach(
     if recent_entries:
         context_str += " Recent activities include: " + "; ".join([str(e.activities) for e in recent_entries])
 
+    # Clean message for matching
+    msg_clean = user_message.strip().lower()
+    
+    # Check if the message is *just* a short greeting
+    is_short_greeting = msg_clean in ["hi", "hello", "hey", "greetings", "hi there", "hello there", "hey coach"]
+    
     # 1. First, check for high-intent keywords to trigger specialized advice
-    if any(word in user_message for word in ["hello", "hi", "hey"]):
+    if is_short_greeting:
         reply = f"Hello {current_user.full_name or current_user.username}! I'm your Ikigai Career Coach. I've been analyzing your profile in {interests_str}. How can I help you discover your path today?"
     
-    elif "my name is" in user_message or "i am" in user_message:
-        name_part = user_message.split("is")[-1].strip() if "is" in user_message else user_message.split("am")[-1].strip()
+    elif msg_clean.startswith(("my name is", "i am ")) and len(msg_clean.split()) < 6:
+        name_part = msg_clean.split("is")[-1].strip() if "is" in msg_clean else msg_clean.split("am")[-1].strip()
         reply = f"It's a pleasure to meet you, {name_part.capitalize()}! I'm here to help you find your Ikigai. Since I'm learning more about you, what's a dream you've had for your career that you've never told anyone?"
 
     elif "ikigai" in user_message:
