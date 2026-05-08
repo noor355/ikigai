@@ -114,6 +114,7 @@ class RecommendationCreate(BaseModel):
     market_demand: str
     salary_range_min: Optional[float] = None
     salary_range_max: Optional[float] = None
+    attribution: Optional[str] = None
     future_oriented: bool = True
 
 
@@ -129,6 +130,7 @@ class RecommendationResponse(BaseModel):
     market_demand: str
     salary_range_min: Optional[float]
     salary_range_max: Optional[float]
+    attribution: Optional[str] = None
     future_oriented: bool
     created_at: datetime
     updated_at: datetime

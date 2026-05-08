@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
-    "backend": "cd backend && .venv/Scripts/python main.py",
+    "backend": "cd backend && ..\\.venv\\Scripts\\python.exe main.py",
     "frontend": "cd frontend && npm start",
     "build": "cd frontend && npm run build"
   },

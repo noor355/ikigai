@@ -32,8 +32,9 @@ class NLPProcessor:
             print("[NLP] Initializing Gemini API...")
             try:
                 genai.configure(api_key=settings.GEMINI_API_KEY)
-                self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
-                print("[NLP] Gemini API initialized successfully")
+                # Ensure we use a stable model name
+                self.gemini_model = genai.GenerativeModel('gemini-1.5-flash-latest')
+                print("[NLP] Gemini API (gemini-1.5-flash-latest) initialized successfully")
             except Exception as e:
                 print(f"[NLP] Gemini initialization failed: {e}")
 
@@ -83,7 +84,8 @@ class NLPProcessor:
             self.generator = pipeline(
                 "text-generation",  # type: ignore
                 model="microsoft/DialoGPT-medium",
-                device=-1  # Force CPU for stability, change to 0 for GPU
+                device=-1,  # Force CPU for stability
+                torch_dtype=torch.float32  # Ensure float32 to prevent dtype mismatches
             )
             print("[NLP] DialoGPT loaded successfully")
         except Exception as e:
@@ -125,17 +127,22 @@ class NLPProcessor:
         # 1. Try Gemini API first (much higher quality)
         if self.gemini_model:
             try:
-                # Prepare a professional coaching prompt
+                # Expert Career Coach Persona with Ikigai Focus
                 system_prompt = (
-                    "You are an empathetic, insightful Ikigai Career Coach. "
-                    "Help the user find their purpose by exploring: "
-                    "1. What they love (Passion) "
-                    "2. What they are good at (Mission) "
-                    "3. What the world needs (Vocation) "
-                    "4. What they can be paid for (Profession). "
-                    "Keep responses concise, conversational, and encouraging. Use the provided context about the user's profile and activities to make your advice highly personal. Avoid repeating the user's input back to them."
+                    "You are the 'Ikigai Expert Coach', a world-class career strategist and empathetic life mentor. "
+                    "Your goal is to help the user find their Ikigai (the intersection of what they love, what they are good at, "
+                    "what the world needs, and what they can be paid for).\n\n"
+                    "GUIDELINES:\n"
+                    "- PERSONALIZATION: Use the provided context about the user's profile and activities to make responses specific. "
+                    "If the user is struggling (e.g., 'staring at walls'), be deeply empathetic but gently transition to discovery.\n"
+                    "- EXPERT INSIGHT: Don't just agree. Offer professional career perspectives. If they mention a hobby, suggest how it "
+                    "could be a skill or a profession.\n"
+                    "- CONVERSATION: Keep it natural. Ask ONE thoughtful follow-up question to keep the discovery process moving.\n"
+                    "- BREVITY: Keep responses under 3-4 sentences unless explaining a complex concept.\n"
+                    "- NEVER repeat the user's input back to them verbatim. Avoid 'I understand you said...'\n"
                 )
-                full_prompt = f"{system_prompt}\n\nContext: {context}\nUser: {user_message}\nCoach:"
+                
+                full_prompt = f"{system_prompt}\n\nUSER CONTEXT: {context}\n\nUSER MESSAGE: {user_message}\n\nEXPERT COACH RESPONSE:"
                 
                 response = self.gemini_model.generate_content(full_prompt)
                 if response and response.text:
@@ -161,7 +168,8 @@ class NLPProcessor:
 
         # Fallback to Pre-trained Chatting System (DialoGPT)
         try:
-            # DialoGPT handles conversation better than raw GPT-2
+            # We want to ensure we're using float32 to avoid dtype mismatches (Half vs Float)
+            # This is common on CPUs when models are loaded in Half precision by default
             responses = self.generator(
                 user_message,
                 max_new_tokens=50,
@@ -170,17 +178,18 @@ class NLPProcessor:
                 do_sample=True,
                 temperature=0.7,
                 top_p=0.9,
-                pad_token_id=50256
+                pad_token_id=50256,
+                clean_up_tokenization_spaces=True
             )
             reply = responses[0]['generated_text'].replace(user_message, "").strip()
             
             if not reply or len(reply) < 5:
-                return "That's interesting! Tell me more about why that's important to you."
+                return f"As your Ikigai coach, I want to dig deeper into '{user_message}'. How does this specific interest make you feel when you engage with it?"
                 
             return reply
         except Exception as e:
             print(f"Error in generation: {e}")
-            return "I'm curious to hear more about that. How does that fit into your ideal life?"
+            return f"That sounds like a unique part of your journey. How has '{user_message}' shaped your view on what you want to achieve financially?"
 
     # ============ SENTIMENT ANALYSIS ============
     def analyze_sentiment(self, text: str) -> Dict:
@@ -379,6 +388,45 @@ class NLPProcessor:
             return text
     
     # ============ INTEGRATED PROCESSING ============
+    def analyze_career_pillars(self, chat_history: List[str]) -> Dict[str, List[str]]:
+        """
+        Use Gemini to perform Semantic Analysis of the entire chat history.
+        Identifies 3 core Ikigai pillars as 'Expert Overrides'.
+        """
+        if not self.gemini_model:
+            return {"passions": [], "skills": [], "values": []}
+
+        try:
+            history_text = "\n".join(chat_history[-15:]) # Analyze last 15 exchanges
+            prompt = (
+                "Task: Analyze the following career coaching chat history and identify exactly 3 core Ikigai pillars "
+                "representing the user's deepest passions, strongest skills, and non-negotiable values.\n\n"
+                "CHAT HISTORY:\n"
+                f"{history_text}\n\n"
+                "Output ONLY a valid JSON object with the following structure:\n"
+                "{\n"
+                "  \"passions\": [\"keyword1\", \"keyword2\", \"keyword3\"],\n"
+                "  \"skills\": [\"keyword1\", \"keyword2\", \"keyword3\"],\n"
+                "  \"values\": [\"keyword1\", \"keyword2\", \"keyword3\"]\n"
+                "}"
+            )
+
+            response = self.gemini_model.generate_content(prompt)
+            if response and response.text:
+                import json
+                # Strip potential markdown code blocks if Gemini returns them
+                content = response.text.strip()
+                if content.startswith("```json"):
+                    content = content[7:-3]
+                elif content.startswith("```"):
+                    content = content[3:-3]
+                
+                return json.loads(content.strip())
+        except Exception as e:
+            print(f"[NLP] Pillar Analysis failed: {e}")
+            
+        return {"passions": [], "skills": [], "values": []}
+
     def process_user_input(self, text: str) -> Dict:
         """
         Complete processing of user input text

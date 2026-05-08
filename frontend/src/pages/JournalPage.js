@@ -9,7 +9,7 @@ const JournalPage = () => {
     activities: [],
     learnings: '',
     challenges: '',
-    mood: 'neutral',
+    mood: '',
     notes: '',
     currentActivity: '',
   });
@@ -73,7 +73,7 @@ const JournalPage = () => {
         activities: [],
         learnings: '',
         challenges: '',
-        mood: 'neutral',
+        mood: '',
         notes: '',
         currentActivity: '',
       });
@@ -223,28 +223,17 @@ const JournalPage = () => {
         <div className="form-section">
           <label className="form-label">
             <FiSmile style={{ display: 'inline', marginRight: '8px' }} />
-            How was your mood?
+            How was your mood? (e.g., Inspired, Focused, Tired)
           </label>
-          <div className="mood-options">
-            {[
-              { value: 'very_happy', emoji: '😄', label: 'Very Happy' },
-              { value: 'happy', emoji: '😊', label: 'Happy' },
-              { value: 'neutral', emoji: '😐', label: 'Neutral' },
-              { value: 'sad', emoji: '😔', label: 'Sad' },
-              { value: 'very_sad', emoji: '😢', label: 'Very Sad' },
-            ].map((mood) => (
-              <label key={mood.value} className="mood-option">
-                <input
-                  type="radio"
-                  name="mood"
-                  value={mood.value}
-                  checked={formData.mood === mood.value}
-                  onChange={handleInputChange}
-                />
-                <span className="mood-emoji">{mood.emoji}</span>
-              </label>
-            ))}
-          </div>
+          <input
+            type="text"
+            name="mood"
+            placeholder="Describe your mood in a few words..."
+            value={formData.mood}
+            onChange={handleInputChange}
+            className="form-input"
+            style={{ width: '100%', padding: '12px', border: '2px solid #e0e0e0', borderRadius: '8px' }}
+          />
         </div>
 
         {/* Notes */}

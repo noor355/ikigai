@@ -26,14 +26,11 @@ class IkigaiRecommendationEngine:
             # Initialize Trainer for TF-IDF Similarity
             print("[ENGINE] Initializing model trainer...")
             self.trainer = ModelTrainer()
-            # Try to load existing model, otherwise train and save
-            if not self.trainer.load_model():
-                print("[ENGINE] No pre-trained model found, training from database...")
-                self.trainer.train_from_career_database(self.careers)
-                self.trainer.save_model()
-            else:
-                print("[ENGINE] Pre-trained TF-IDF model loaded")
-            print("[ENGINE] Model trainer initialized")
+            # ALWAYS refresh model from database to ensure new careers are indexed
+            print("[ENGINE] Refreshing TF-IDF model from career database...")
+            self.trainer.train_from_career_database(self.careers)
+            self.trainer.save_model()
+            print("[ENGINE] Model trainer initialized and model updated")
         except Exception as e:
             print(f"[ENGINE] Failed to initialize NLP Processor: {e}")
             self.nlp_enabled = False
@@ -44,24 +41,53 @@ class IkigaiRecommendationEngine:
         """
         Comprehensive user profile analysis based on Ikigai pillars
         
-        Returns: User vector with passion, skills, values, market readiness scores
+        Tailored for Teens: Focuses on Passion, Skills, and Values.
+        Market Readiness (Education/Work Exp) is hidden/removed as it's less relevant for teenagers.
+        
+        Returns: User vector with scores
         """
         passion_score = self._score_passion(user_profile, daily_entries)
         skills_score = self._score_skills(user_profile, daily_entries)
         values_score = self._score_values(user_profile, daily_entries)
-        market_readiness = self._score_market_readiness(user_profile)
+        
+        # Teen mode: We keep this at 0 internally but ignore it for the overall average
+        market_readiness = 0.0 
         
         return {
             'passion_score': passion_score,
             'skills_score': skills_score,
             'values_score': values_score,
             'market_readiness': market_readiness,
-            'passion_keywords': self._extract_keywords(user_profile, 'interests'),
-            'skill_keywords': self._extract_keywords(user_profile, 'skills'),
-            'value_keywords': self._extract_keywords(user_profile, 'values'),
-            'overall_readiness': (passion_score + skills_score + values_score + market_readiness) / 4,
+            'passion_keywords': self._extract_dynamic_keywords(user_profile, daily_entries, 'interests'),
+            'skill_keywords': self._extract_dynamic_keywords(user_profile, daily_entries, 'skills'),
+            'value_keywords': self._extract_dynamic_keywords(user_profile, daily_entries, 'values'),
+            'overall_readiness': (passion_score + skills_score + values_score) / 3,
         }
     
+    def _extract_dynamic_keywords(self, user_profile, daily_entries, profile_attr) -> List[str]:
+        """Extract keywords from both profile and daily entries for a specific pillar"""
+        keywords = set()
+        
+        # 1. Start with profile keywords
+        profile_data = getattr(user_profile, profile_attr, [])
+        if isinstance(profile_data, list):
+            for item in profile_data:
+                keywords.add(item.lower())
+        elif isinstance(profile_data, str) and profile_data:
+            keywords.add(profile_data.lower())
+            
+        # 2. Add keywords from daily entries if NLP is enabled
+        if self.nlp_enabled and self.nlp_processor and daily_entries:
+            # Look at last 10 entries for fresh context
+            recent_texts = [e.notes for e in daily_entries[-10:] if hasattr(e, 'notes') and e.notes]
+            if recent_texts:
+                combined_text = " ".join(recent_texts)
+                extracted = self.nlp_processor.extract_keywords(combined_text, top_k=15)
+                for word in extracted:
+                    keywords.add(word.lower())
+                    
+        return list(keywords)
+
     def _score_passion(self, user_profile, daily_entries) -> float:
         """Calculate passion score 0-100"""
         score = 0
@@ -77,19 +103,22 @@ class IkigaiRecommendationEngine:
         # Analyze daily entries using NLP if enabled
         if daily_entries:
             has_data = True
+            # BASELINE for activity
+            score = max(score, 50)
             if self.nlp_enabled and self.nlp_processor:
                 # Combine last 5 entries for a sentiment snapshot
                 recent_texts = [e.notes for e in daily_entries[-5:] if hasattr(e, 'notes') and e.notes]
                 if recent_texts:
                     sentiments = [self.nlp_processor.analyze_sentiment(text) for text in recent_texts]
                     positive_count = sum(1 for s in sentiments if s.get('sentiment_type') == 'positive')
-                    score += (positive_count / len(recent_texts)) * 30
+                    # Increase impact of positive engagement
+                    score += (positive_count / len(recent_texts)) * 50
             else:
                 # Fallback to categorical mood field
                 positive_moods = sum(1 for e in daily_entries[-30:] 
                                     if hasattr(e, 'mood') and e.mood in ['happy', 'very_happy', 'excited'])
                 if len(daily_entries) > 0:
-                    score += (positive_moods / len(daily_entries[-30:])) * 30
+                    score += (positive_moods / len(daily_entries[-30:])) * 50
         
         return min(100, score) if has_data else 0.0
 
@@ -101,15 +130,20 @@ class IkigaiRecommendationEngine:
         if hasattr(user_profile, 'skills') and user_profile.skills:
             skill_count = len(user_profile.skills) if isinstance(user_profile.skills, list) else 0
             if skill_count > 0:
-                score += min(skill_count * 10, 60)
+                score += min(skill_count * 15, 60)
                 has_data = True
         
         if hasattr(user_profile, 'work_experience_years') and user_profile.work_experience_years:
             years = user_profile.work_experience_years
             if years > 0:
-                score += min(years * 5, 40)
+                score += min(years * 10, 40)
                 has_data = True
         
+        # Check if skills mentioned in daily entries
+        if daily_entries and not has_data:
+            score = 30
+            has_data = True
+
         return min(100, score) if has_data else 0.0
 
     def _score_values(self, user_profile, daily_entries) -> float:
@@ -120,8 +154,12 @@ class IkigaiRecommendationEngine:
         if hasattr(user_profile, 'values') and user_profile.values:
             value_count = len(user_profile.values) if isinstance(user_profile.values, list) else 0
             if value_count > 0:
-                score += min(value_count * 10, 100)
+                score += min(value_count * 20, 100)
                 has_data = True
+        
+        if daily_entries and not has_data:
+            score = 40
+            has_data = True
         
         return min(100, score) if has_data else 0.0
 
@@ -157,10 +195,15 @@ class IkigaiRecommendationEngine:
                 return attr[:15]
         return []
     
-    def find_matching_careers(self, user_vector: Dict, top_n: int = 5) -> List[Dict]:
+    def find_matching_careers(self, user_vector: Dict, top_n: int = 5, context_boost: Dict = None) -> List[Dict]:
         """
-        Find best matching careers based on user profile
+        Find best matching careers based on user profile and optional context boost from Coach
         
+        Args:
+            user_vector: Analyzed user profile
+            top_n: Number of results
+            context_boost: Dict with 'passions', 'skills', 'values' from expert analysis
+            
         Returns: List of top matching careers with scores and reasoning
         """
         matches = []
@@ -168,21 +211,62 @@ class IkigaiRecommendationEngine:
         # New: Get TF-IDF similarities from Trainer (from notebook approach)
         tfidf_scores = {}
         if self.nlp_enabled and self.trainer:
+            # Combine standard keywords with context boost keywords if provided
+            boost_keywords = []
+            if context_boost:
+                boost_keywords = [
+                    *context_boost.get('passions', []),
+                    *context_boost.get('skills', []),
+                    *context_boost.get('values', [])
+                ]
+
             combined_queries = " ".join([
                 *user_vector.get('passion_keywords', []),
                 *user_vector.get('skill_keywords', []),
-                *user_vector.get('value_keywords', [])
+                *user_vector.get('value_keywords', []),
+                *boost_keywords
             ])
             recs = self.trainer.get_recommendations(combined_queries, top_n=50)
             tfidf_scores = {r['career']: r['score'] for r in recs}
         
         for career in self.careers:
             match_score = self._calculate_career_match(user_vector, career)
+            attribution_reasons = []
             
-            # Boost score based on TF-IDF similarity (up to +20 points)
-            if career['title'] in tfidf_scores:
-                match_score += (tfidf_scores[career['title']] * 20)
+            # Boost score based on TF-IDF similarity (up to +40 points)
+            tfidf_sim = tfidf_scores.get(career['title'], 0)
+            if tfidf_sim > 0.1: # Significant match
+                match_score += (tfidf_sim * 40)
+                # Find which keyword matched best for attribution
+                career_terms = set([k.lower() for k in career.get('passion_keywords', []) + career.get('skill_keywords', [])])
+                user_terms = [k.lower() for k in user_vector.get('passion_keywords', [])]
+                overlap = [t for t in user_terms if t in career_terms]
+                if overlap:
+                    attribution_reasons.append(f"matched your interest in {overlap[0]}")
             
+            # Apply direct boost for 'Expert Override' pillars (Coach Signal)
+            if context_boost:
+                boost_weight = 5.0 # points per matching keyword
+                boost_found = False
+                for k in context_boost.get('passions', []):
+                    if k.lower() in [pk.lower() for pk in career.get('passion_keywords', [])]:
+                        match_score += boost_weight
+                        boost_found = True
+                for k in context_boost.get('skills', []):
+                    if k.lower() in [sk.lower() for sk in career.get('skill_keywords', [])]:
+                        match_score += boost_weight
+                        boost_found = True
+                
+                if boost_found:
+                    attribution_reasons.append("aligned with your recent conversation with Coach")
+
+            # Construct attribution string
+            attribution = ""
+            if attribution_reasons:
+                attribution = "Expert Tip: Boosted because this " + " and ".join(attribution_reasons) + "."
+            elif tfidf_sim > 0.2:
+                attribution = "Expert Tip: High semantic match with your recent journal entries."
+
             reasoning = self._generate_reasoning(user_vector, career, match_score)
             skill_gaps = self._identify_skill_gaps(user_vector, career)
             
@@ -192,6 +276,7 @@ class IkigaiRecommendationEngine:
                 'description': career['description'],
                 'match_score': min(100, round(match_score, 1)),
                 'reasoning': reasoning,
+                'attribution': attribution,
                 'skill_gaps': skill_gaps,
                 'learning_path': career.get('learning_path', []),
                 'salary_range': career.get('salary_range', (0, 0)),
@@ -239,18 +324,31 @@ class IkigaiRecommendationEngine:
     
     def _match_component(self, user_keywords: List[str], user_score: float, career_keywords: List[str]) -> float:
         """Calculate match for a single component (passion/skills/values)"""
-        if not career_keywords:
-            return user_score
+        # Base score from profile levels
+        # Increase visibility: Use a higher baseline if there is activity
+        base_score = user_score * 0.5
         
-        # Keyword overlap
+        if not career_keywords:
+            return base_score + 20
+        
+        # Keyword overlap with semantic awareness (case insensitive)
         user_set = set([k.lower() for k in user_keywords])
         career_set = set([k.lower() for k in career_keywords])
         
+        if not user_set:
+            return base_score
+            
         overlap = len(user_set & career_set)
-        overlap_ratio = overlap / len(career_set) if career_set else 0.5
         
-        # Combined score
-        return user_score * 0.5 + overlap_ratio * 50
+        # Expert Tuning: If user keywords overlap with career keywords, give a MUCH larger boost
+        if overlap > 0:
+            # Overlap score captures how many career keywords we hit
+            overlap_score = (overlap / len(career_set)) * 80 if career_set else 40
+            # Matching bonus based on total overlap to reward specificity
+            bonus = min(overlap * 15, 40)
+            return min(100, base_score + overlap_score + bonus)
+        
+        return base_score
     
     def _identify_skill_gaps(self, user_vector: Dict, career: Dict) -> List[str]:
         """Identify skills user needs to develop"""

@@ -137,19 +137,6 @@ const RecommendationsPage = () => {
                 <span className="score-value">{Math.round(analysis.values_score)}/100</span>
               </div>
 
-              <div className="score-card">
-                <label>Market Readiness</label>
-                <div className="score-bar">
-                  <div
-                    className="score-fill"
-                    style={{
-                      width: `${analysis.market_readiness}%`,
-                      backgroundColor: getScoreColor(analysis.market_readiness),
-                    }}
-                  />
-                </div>
-                <span className="score-value">{Math.round(analysis.market_readiness)}/100</span>
-              </div>
             </div>
           </div>
         )}
@@ -181,7 +168,33 @@ const RecommendationsPage = () => {
                 <div className="career-header">
                   <div className="career-info">
                     <h3>{rec.career_title}</h3>
+                    {rec.attribution && (
+                      <div className="expert-tip" style={{
+                        backgroundColor: '#e3f2fd',
+                        borderLeft: '4px solid #1976d2',
+                        padding: '6px 10px',
+                        marginBottom: '10px',
+                        borderRadius: '4px',
+                        fontSize: '0.85rem',
+                        fontStyle: 'italic',
+                        color: '#0d47a1',
+                        display: 'inline-block',
+                        width: '100%'
+                      }}>
+                        ✨ <strong>Expert Tip:</strong> {rec.attribution}
+                      </div>
+                    )}
                     <p className="description">{rec.description}</p>
+                    {rec.salary_range_min && (
+                      <div className="salary-info" style={{ 
+                        marginTop: '8px', 
+                        fontSize: '0.9rem', 
+                        fontWeight: '500',
+                        color: '#444' 
+                      }}>
+                        💰 Est. Salary: ${rec.salary_range_min.toLocaleString()} - ${rec.salary_range_max.toLocaleString()}
+                      </div>
+                    )}
                   </div>
                   <div className="career-score" style={{ borderColor: getScoreColor(rec.match_score) }}>
                     <div

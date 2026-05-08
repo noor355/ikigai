@@ -18,6 +18,7 @@ class User(Base):
     
     # Relationships
     profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    expert_override = relationship("ExpertOverride", back_populates="user", uselist=False, cascade="all, delete-orphan")
     quiz_responses = relationship("QuizResponse", back_populates="user", cascade="all, delete-orphan")
     recommendations = relationship("Recommendation", back_populates="user", cascade="all, delete-orphan")
 
@@ -41,6 +42,18 @@ class UserProfile(Base):
     
     # Relationships
     user = relationship("User", back_populates="profile")
+
+
+class ExpertOverride(Base):
+    __tablename__ = "expert_overrides"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True)
+    pillars = Column(JSON) # {"passions": [], "skills": [], "values": []}
+    analyzed_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", back_populates="expert_override")
 
 
 class QuizResponse(Base):

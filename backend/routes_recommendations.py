@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from database import get_db
-from models import User, Recommendation, DailyEntry
+from models import User, Recommendation, DailyEntry, ExpertOverride
 from schemas import RecommendationResponse, DailyEntryCreate
 from security import get_current_active_user
 from ml_engine.recommendation_engine import create_recommendation_engine
@@ -72,8 +72,12 @@ def generate_recommendations(
     # Analyze user profile
     user_vector = engine.analyze_user_profile(profile, daily_entries)
     
-    # Find matching careers
-    matched_careers = engine.find_matching_careers(user_vector, top_n)
+    # Check for Expert Overrides (Coach Signals)
+    expert_override = db.query(ExpertOverride).filter(ExpertOverride.user_id == current_user.id).first()
+    context_boost = expert_override.pillars if expert_override else None
+    
+    # Find matching careers with optional context boost
+    matched_careers = engine.find_matching_careers(user_vector, top_n, context_boost=context_boost)
     
     # Save recommendations to database
     db.query(Recommendation).filter(

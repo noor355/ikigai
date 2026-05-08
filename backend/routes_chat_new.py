@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
-from models import User, DailyEntry
+from models import User, DailyEntry, ExpertOverride
 from routes_auth import get_current_active_user
 from schemas_chat import ChatMessageCreate, ChatResponse
 from ml_engine.recommendation_engine import create_recommendation_engine
@@ -75,7 +75,27 @@ async def chat_with_coach(
         reply = "Ikigai is a Japanese concept meaning 'a reason for being'. It's the intersection of: 1. What you love, 2. What you are good at, 3. What the world needs, and 4. What you can be paid for. Which of these four areas feels like your strongest foundation right now?"
         
     elif any(word in user_message for word in ["recommendation", "suggest", "find"]):
-        reply = "To see your full career recommendations, head over to the Recommendations page! Based on our chat, I'm already seeing a strong alignment between your passions and future job markets. What's one skill you're proud of?"
+        reply = "I've just updated your personalized recommendations based on our conversation! Head over to the Recommendations page to see what's changed. What's one skill you're proud of?"
+        
+        # EXPERT WORKFLOW: Signal the recommendation engine by performing semantic analysis now
+        try:
+            # For demonstration, we'll use a simulated history or a small set of recent entries
+            # In a real app, you'd pull from a chat_history table
+            history = [chat_input.message] # Last message for context
+            pillars = engine.nlp_processor.analyze_career_pillars(history)
+            
+            # Save override to DB
+            override = db.query(ExpertOverride).filter(ExpertOverride.user_id == current_user.id).first()
+            if not override:
+                override = ExpertOverride(user_id=current_user.id, pillars=pillars)
+                db.add(override)
+            else:
+                override.pillars = pillars
+                override.analyzed_at = datetime.datetime.utcnow()
+            db.commit()
+            print(f"[CHAT] Expert pillars identified: {pillars}")
+        except Exception as e:
+            print(f"[CHAT] Expert Pillar analysis failed: {e}")
 
     # 2. Use the real NLP model for general conversation
     else:
