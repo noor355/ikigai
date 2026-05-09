@@ -8,7 +8,9 @@ from sentence_transformers import SentenceTransformer, util
 import torch
 from typing import List, Dict, Tuple, Any
 import numpy as np
-import google.generativeai as genai
+from google import genai
+from google.genai import types
+import os
 from config import settings
 
 
@@ -24,17 +26,19 @@ class NLPProcessor:
         self.summarizer: Any
         self.classifier: Any
         self.generator: Any
-        self.gemini_model: Any = None
+        self.gemini_client: Any = None
         self.cache: Dict[str, Any] = {}
 
         # Initialize Gemini if API key is present
-        if settings.GEMINI_API_KEY:
-            print("[NLP] Initializing Gemini API...")
+        api_key = settings.GOOGLE_API_KEY
+        if api_key:
+            print(f"[NLP] Initializing Gemini API with key: {api_key[:10]}...")
             try:
-                genai.configure(api_key=settings.GEMINI_API_KEY)
-                # Ensure we use a stable model name
-                self.gemini_model = genai.GenerativeModel('gemini-1.5-flash-latest')
-                print("[NLP] Gemini API (gemini-1.5-flash-latest) initialized successfully")
+                # Set GEMINI_API_KEY to match the docs for automatic pickup
+                os.environ["GEMINI_API_KEY"] = api_key
+                # The client gets the API key from the environment variable `GEMINI_API_KEY`.
+                self.gemini_client = genai.Client()
+                print("[NLP] Gemini API (gemini-2.0-flash) initialized successfully")
             except Exception as e:
                 print(f"[NLP] Gemini initialization failed: {e}")
 
@@ -42,7 +46,8 @@ class NLPProcessor:
         try:
             self.sentiment_pipeline = pipeline(
                 "sentiment-analysis",  # type: ignore
-                model="distilbert-base-uncased-finetuned-sst-2-english"
+                model="distilbert-base-uncased-finetuned-sst-2-english",
+                device=-1
             )
             print("[NLP] Sentiment model loaded")
         except Exception as e:
@@ -50,7 +55,7 @@ class NLPProcessor:
             self.sentiment_pipeline = None
         
         print("[NLP] Loading embedding model...")
-        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu')
         print("[NLP] Embedding model loaded")
         
         # Named Entity Recognition
@@ -59,7 +64,8 @@ class NLPProcessor:
             self.ner_pipeline = pipeline(
                 "ner",  # type: ignore
                 model="dbmdz/bert-large-cased-finetuned-conll03-english",
-                aggregation_strategy="simple"
+                aggregation_strategy="simple",
+                device=-1
             )
             print("[NLP] NER model loaded")
         except Exception as e:
@@ -71,7 +77,8 @@ class NLPProcessor:
             print("[NLP] Loading zero-shot classifier...")
             self.classifier = pipeline(
                 "zero-shot-classification",  # type: ignore
-                model="facebook/bart-large-mnli"
+                model="facebook/bart-large-mnli",
+                device=-1
             )
             print("[NLP] Zero-shot classifier loaded")
         except Exception as e:
@@ -100,7 +107,8 @@ class NLPProcessor:
             print("[NLP] Loading summarization model (DistilBART)...")
             self.summarizer = pipeline(
                 "summarization",  # type: ignore
-                model="sshleifer/distilbart-cnn-12-6"
+                model="sshleifer/distilbart-cnn-12-6",
+                device=-1
             )
             print("[NLP] Summarization model loaded")
         except Exception as e:
@@ -125,7 +133,7 @@ class NLPProcessor:
         Generate a coaching response using Gemini AI or fallback NLP models.
         """
         # 1. Try Gemini API first (much higher quality)
-        if self.gemini_model:
+        if self.gemini_client:
             try:
                 # Expert Career Coach Persona with Ikigai Focus
                 system_prompt = (
@@ -140,11 +148,19 @@ class NLPProcessor:
                     "- CONVERSATION: Keep it natural. Ask ONE thoughtful follow-up question to keep the discovery process moving.\n"
                     "- BREVITY: Keep responses under 3-4 sentences unless explaining a complex concept.\n"
                     "- NEVER repeat the user's input back to them verbatim. Avoid 'I understand you said...'\n"
+                    "- CAREER & SALARY: If the user asks about combinations, career paths, or roles, ALWAYS provide 2-3 specific profession "
+                    "titles, explaining WHY they fit, and suggest estimated yearly salary ranges (e.g., '$80k - $120k') based on current global/local market trends.\n"
                 )
                 
                 full_prompt = f"{system_prompt}\n\nUSER CONTEXT: {context}\n\nUSER MESSAGE: {user_message}\n\nEXPERT COACH RESPONSE:"
                 
-                response = self.gemini_model.generate_content(full_prompt)
+                # Using the new SDK 1.0.0 client.models.generate_content method
+                # Using 2.5-flash which is the stable high-quota entry
+                response = self.gemini_client.models.generate_content(
+                    model="gemini-2.5-flash", 
+                    contents=full_prompt
+                )
+                
                 if response and response.text:
                     return response.text.strip()
             except Exception as e:
@@ -369,6 +385,23 @@ class NLPProcessor:
         if not text or len(text.strip()) < 100:
             return text  # Too short to summarize
         
+        # --- NEW: Use Gemini if available for much better summaries ---
+        if self.gemini_client:
+            try:
+                prompt = (
+                    f"Summarize the following text concisely (under {max_length} words). "
+                    "Focus on identifying the core interests or skills mentioned.\n\n"
+                    f"TEXT: {text}"
+                )
+                response = self.gemini_client.models.generate_content(
+                    model="gemini-2.0-flash",
+                    contents=prompt
+                )
+                if response and response.text:
+                    return response.text.strip()
+            except Exception as e:
+                print(f"[NLP] Gemini summarization failed: {e}")
+
         # Fallback if summarizer model is missing
         if self.summarizer is None:
             # Simple extractive summary: first 2 sentences
@@ -393,7 +426,7 @@ class NLPProcessor:
         Use Gemini to perform Semantic Analysis of the entire chat history.
         Identifies 3 core Ikigai pillars as 'Expert Overrides'.
         """
-        if not self.gemini_model:
+        if not self.gemini_client:
             return {"passions": [], "skills": [], "values": []}
 
         try:
@@ -411,7 +444,12 @@ class NLPProcessor:
                 "}"
             )
 
-            response = self.gemini_model.generate_content(prompt)
+            # Using the new SDK 1.0.0 client.models.generate_content method
+            response = self.gemini_client.models.generate_content(
+                model="gemini-2.0-flash", 
+                contents=prompt
+            )
+
             if response and response.text:
                 import json
                 # Strip potential markdown code blocks if Gemini returns them

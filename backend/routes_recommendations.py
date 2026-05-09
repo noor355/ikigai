@@ -36,6 +36,7 @@ def get_recommendations(
             'market_demand': rec.market_demand,
             'salary_range_min': rec.salary_range_min,
             'salary_range_max': rec.salary_range_max,
+            'attribution': rec.attribution,
             'future_oriented': rec.future_oriented,
             'created_at': rec.created_at,
             'updated_at': rec.updated_at,
@@ -77,7 +78,13 @@ def generate_recommendations(
     context_boost = expert_override.pillars if expert_override else None
     
     # Find matching careers with optional context boost
-    matched_careers = engine.find_matching_careers(user_vector, top_n, context_boost=context_boost)
+    # Cast context_boost to Dict to satisfy Pylance
+    from typing import cast, Dict
+    matched_careers = engine.find_matching_careers(
+        user_vector, 
+        top_n, 
+        context_boost=cast(Dict, context_boost)
+    )
     
     # Save recommendations to database
     db.query(Recommendation).filter(
@@ -98,7 +105,8 @@ def generate_recommendations(
             market_demand=career_match.get('market_demand'),
             salary_range_min=career_match.get('salary_range', (0, 0))[0],
             salary_range_max=career_match.get('salary_range', (0, 0))[1],
-            future_oriented=True
+            attribution=career_match.get('attribution'),
+            future_oriented=career_match.get('future_relevance') == "High"
         )
         db.add(recommendation)
         db.flush()
@@ -107,6 +115,7 @@ def generate_recommendations(
             'career_title': recommendation.career_title,
             'match_score': recommendation.match_score,
             'reasoning': career_match['reasoning'],
+            'attribution': career_match.get('attribution'),
             'skill_gaps': career_match.get('skill_gaps', []),
             'learning_path': career_match.get('learning_path', []),
         })

@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     MODEL_PATH: str = "ml_engine/models/"
 
     # Gemini API
-    GEMINI_API_KEY: Optional[str] = None
+    GOOGLE_API_KEY: Optional[str] = None
 
     class Config:
         env_file = ".env"

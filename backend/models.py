@@ -85,6 +85,7 @@ class Recommendation(Base):
     market_demand = Column(String(50))  # High, Medium, Low
     salary_range_min = Column(Float, nullable=True)
     salary_range_max = Column(Float, nullable=True)
+    attribution = Column(Text, nullable=True)
     future_oriented = Column(Boolean, default=True)  # Is this a future-oriented career?
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

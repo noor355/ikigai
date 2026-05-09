@@ -21,7 +21,6 @@ function Layout({ setToken }) {
     { name: "AI Coach", path: "/chat", icon: FiMessageCircle },
     { name: "New Journal", path: "/journal", icon: FiFileText },
     { name: "Journal History", path: "/history", icon: FiClock },
-    { name: "Personality Tests", path: "/tests", icon: FiZap },
   ];
 
   return (

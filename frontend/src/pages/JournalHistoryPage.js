@@ -54,7 +54,7 @@ function JournalHistoryPage() {
                 </span>
               </div>
               <p style={{ margin: 0, color: "#334155", lineHeight: "1.7", fontSize: "15px", whiteSpace: "pre-wrap" }}>
-                {item.notes || "No content written for this day."}
+                {item.notes || (item.activities && item.activities.join(', ')) || "No content written for this day."}
               </p>
             </div>
           ))
